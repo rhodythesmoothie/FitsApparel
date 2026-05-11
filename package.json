@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "cd client/web && next build",
     "start": "next start",
-    "lint": "eslint --fix"
+    "lint": "eslint --fix",
+    "deploy": "npm run build && firebase deploy",
+    "firebase:login": "firebase login",
+    "firebase:init": "firebase init hosting"
   },
   "dependencies": {
     "@heroui/accordion": "2.2.28",
