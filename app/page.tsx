@@ -1,56 +1,65 @@
-import { Link } from "@heroui/link";
-import { Snippet } from "@heroui/snippet";
-import { Code } from "@heroui/code";
-import { button as buttonStyles } from "@heroui/theme";
+import NextLink from "next/link";
 
-import { siteConfig } from "@/config/site";
-import { title, subtitle } from "@/components/primitives";
-import { GithubIcon } from "@/components/icons";
+import { products } from "@/config/products";
 
 export default function Home() {
   return (
-    <section className="flex flex-col items-center justify-center gap-4 py-8 md:py-10">
-      <div className="inline-block max-w-xl text-center justify-center">
-        <span className={title()}>Make&nbsp;</span>
-        <span className={title({ color: "violet" })}>beautiful&nbsp;</span>
-        <br />
-        <span className={title()}>
-          websites regardless of your design experience.
-        </span>
-        <div className={subtitle({ class: "mt-4" })}>
-          Beautiful, fast and modern React UI library.
+    <>
+      <section
+        className="relative left-1/2 w-screen -translate-x-1/2 -mt-20 min-h-[72vh] bg-cover bg-center bg-no-repeat md:-mt-24 md:min-h-screen"
+        style={{ backgroundImage: 'url("/fits-apparel-bg.jpg")' }}
+      />
+
+      <section className="pb-14 md:pb-20">
+        <div className="mx-auto max-w-6xl rounded-2xl bg-white/90 p-5 shadow-xl backdrop-blur-sm md:p-8">
+          <h2 className="text-2xl font-semibold text-black md:text-3xl">
+            Fits Apparel Tees
+          </h2>
+          <p className="mt-2 text-sm text-black/70 md:text-base">
+          </p>
+
+          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {products.map((shirt) => (
+              <NextLink
+                key={shirt.slug}
+                className="block overflow-hidden rounded-xl border border-black/10 bg-white transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg"
+                href={`/shop/${shirt.slug}`}
+              >
+                <article className="relative">
+                  {shirt.soldOut ? (
+                    <span className="absolute left-3 top-3 z-10 bg-[#e8e8e8] px-3 py-1 text-xs tracking-[0.2em] sm:tracking-[0.3em] text-black/70">
+                      SOLD OUT
+                    </span>
+                  ) : null}
+                  <img
+                    alt={shirt.name}
+                    className="h-80 w-full object-cover"
+                    src={shirt.image}
+                  />
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="text-xl font-medium leading-tight text-black">{shirt.name}</h3>
+                      <p className="text-lg font-medium leading-none text-black">{shirt.price}</p>
+                    </div>
+                  </div>
+                </article>
+              </NextLink>
+            ))}
+          </div>
+
+          <div className="mt-10 rounded-xl border border-black/10 bg-white p-4 md:p-6">
+            <h2 className="text-2xl font-semibold text-black md:text-3xl">Size Chart</h2>
+            <p className="mt-2 text-sm text-black/70 md:text-base">
+              Find your best fit before placing an order.
+            </p>
+            <img
+              alt="Fits Apparel Size Chart"
+              className="mt-5 mx-auto w-full max-w-2xl rounded-lg object-contain"
+              src="/sizechart.png"
+            />
+          </div>
         </div>
-      </div>
-
-      <div className="flex gap-3">
-        <Link
-          isExternal
-          className={buttonStyles({
-            color: "primary",
-            radius: "full",
-            variant: "shadow",
-          })}
-          href={siteConfig.links.docs}
-        >
-          Documentation
-        </Link>
-        <Link
-          isExternal
-          className={buttonStyles({ variant: "bordered", radius: "full" })}
-          href={siteConfig.links.github}
-        >
-          <GithubIcon size={20} />
-          GitHub
-        </Link>
-      </div>
-
-      <div className="mt-8">
-        <Snippet hideCopyButton hideSymbol variant="bordered">
-          <span>
-            Get started by editing <Code color="primary">app/page.tsx</Code>
-          </span>
-        </Snippet>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
