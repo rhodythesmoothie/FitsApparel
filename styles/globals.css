@@ -10,3 +10,7 @@
     --font-sans: "font", sans-serif;
     --font-mono: "monospace", monospace;
 }
+
+body {
+    background: #ffffff;
+}
