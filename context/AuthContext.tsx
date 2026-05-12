@@ -10,7 +10,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 
-function formatAuthError(error: unknown) {
+export function formatAuthError(error: unknown) {
   if (error instanceof Error) {
     if (error.message.includes('auth/configuration-not-found')) {
       return 'Firebase Authentication is not enabled for this project. In Firebase Console, open Authentication and enable Email/Password sign-in.';
