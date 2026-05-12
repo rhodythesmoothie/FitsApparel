@@ -3,33 +3,83 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
+import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { db } from '@/config/firebase';
+import { useAuth } from '@/context/AuthContext';
+import type { Order } from '@/types';
 
 export default function ProfilePage() {
+  const { user, logout, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [orders, setOrders] = useState<(Order & { docId: string })[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    try {
-      const userData = localStorage.getItem('fitsApparelUser');
-      if (userData) {
-        setUser(JSON.parse(userData));
-      } else {
-        router.push('/login');
-      }
-    } catch (err) {
+    if (!authLoading && !user) {
       router.push('/login');
-    } finally {
-      setLoading(false);
     }
-  }, [router]);
+  }, [user, authLoading, router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('fitsApparelUser');
-    router.push('/');
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!user?.uid) return;
+
+      try {
+        setLoading(true);
+        const q = query(
+          collection(db, 'orders'),
+          where('userId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        );
+        const snapshot = await getDocs(q);
+        
+        const fetchedOrders = snapshot.docs.map(doc => ({
+          ...doc.data() as Order,
+          docId: doc.id,
+        }));
+
+        setOrders(fetchedOrders);
+      } catch (err) {
+        console.error('Error fetching orders:', err);
+        setError('Failed to load orders');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user?.uid) {
+      fetchOrders();
+    }
+  }, [user?.uid]);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
   };
 
-  if (loading) {
+  const formatOrderDate = (value: unknown) => {
+    if (value && typeof value === 'object' && 'toDate' in (value as Record<string, unknown>)) {
+      const ts = value as { toDate: () => Date };
+      return ts.toDate().toLocaleDateString();
+    }
+
+    if (value instanceof Date) {
+      return value.toLocaleDateString();
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+      return new Date(value).toLocaleDateString();
+    }
+
+    return 'N/A';
+  };
+
+  if (authLoading || loading) {
     return (
       <div className="mx-auto max-w-md py-16 text-center md:py-24">
         <p className="text-black/70">Loading...</p>
@@ -42,30 +92,31 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl py-8 md:py-16">
-      <div className="rounded-2xl border border-black/10 bg-white p-8">
+    <div className="mx-auto max-w-6xl py-8 md:py-16">
+      <div className="mb-8">
         <h1 className="text-3xl font-semibold text-black">My Profile</h1>
+        <p className="mt-2 text-black/70">Manage your account and view orders</p>
+      </div>
 
-        <div className="mt-8 space-y-6">
+      {/* Profile Info */}
+      <div className="mb-12 rounded-2xl border border-black/10 bg-white p-8">
+        <div className="grid gap-8 md:grid-cols-2">
           <div>
-            <p className="text-sm font-medium text-black/70">Email</p>
+            <p className="text-sm font-medium text-black/70">Email Address</p>
             <p className="mt-2 text-lg text-black">{user.email}</p>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-black/70">Name</p>
-            <p className="mt-2 text-lg text-black">{user.name}</p>
           </div>
 
           <div>
             <p className="text-sm font-medium text-black/70">Account Created</p>
             <p className="mt-2 text-lg text-black">
-              {new Date(user.loginTime).toLocaleDateString()}
+              {user.metadata?.creationTime
+                ? new Date(user.metadata.creationTime).toLocaleDateString()
+                : 'N/A'}
             </p>
           </div>
         </div>
 
-        <div className="mt-12 space-y-3 border-t border-black/10 pt-8">
+        <div className="mt-8 space-y-3 border-t border-black/10 pt-8">
           <button
             className="w-full border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white"
             onClick={handleLogout}
@@ -75,11 +126,126 @@ export default function ProfilePage() {
           </button>
           <NextLink
             className="block w-full border border-black/20 bg-black/5 px-6 py-3 text-center text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black/10"
-            href="/"
+            href="/shop"
           >
             CONTINUE SHOPPING
           </NextLink>
         </div>
+      </div>
+
+      {/* Orders Section */}
+      <div>
+        <h2 className="text-2xl font-semibold text-black">Order History</h2>
+        <p className="mt-2 text-black/70">View and track all your orders</p>
+
+        {error && (
+          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-900">{error}</p>
+          </div>
+        )}
+
+        {orders.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-black/10 bg-white p-8 text-center">
+            <p className="text-black/70">No orders yet.</p>
+            <NextLink
+              className="mt-6 inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white"
+              href="/shop"
+            >
+              START SHOPPING
+            </NextLink>
+          </div>
+        ) : (
+          <div className="mt-6 space-y-4">
+            {orders.map((order) => (
+              <div key={order.docId} className="rounded-2xl border border-black/10 bg-white p-6">
+                <div className="grid gap-4 md:grid-cols-5">
+                  <div>
+                    <p className="text-sm font-medium text-black/70">Order Number</p>
+                    <p className="mt-1 font-mono text-black">{order.orderId}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-black/70">Date</p>
+                    <p className="mt-1 text-black">{formatOrderDate(order.createdAt)}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-black/70">Items</p>
+                    <p className="mt-1 text-black">{order.items.length}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-black/70">Total</p>
+                    <p className="mt-1 font-semibold text-black">₱{order.total.toFixed(2)}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-black/70">Status</p>
+                    <p className="mt-1">
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-900' :
+                        order.status === 'approved' ? 'bg-blue-100 text-blue-900' :
+                        order.status === 'confirmed' ? 'bg-green-100 text-green-900' :
+                        'bg-red-100 text-red-900'
+                      }`}>
+                        {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Order Details */}
+                <div className="mt-6 border-t border-black/10 pt-6">
+                  <p className="text-sm font-medium text-black/70">Items</p>
+                  <div className="mt-2 space-y-2">
+                    {order.items.map((item, idx) => (
+                      <p key={idx} className="text-sm text-black">
+                        {item.name} (Size: {item.size}) x{item.quantity} - ₱{(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div>
+                      <p className="text-sm font-medium text-black/70">Shipping Address</p>
+                      <p className="mt-1 text-sm text-black">
+                        {order.shippingAddress.fullName}<br />
+                        {order.shippingAddress.street}<br />
+                        {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.postalCode}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-sm font-medium text-black/70">Payment & Shipping</p>
+                      <p className="mt-1 text-sm text-black">
+                        Payment: {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()}<br />
+                        Shipping: ₱{order.shippingCost.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {order.status === 'pending' && (
+                  <div className="mt-6 rounded-lg border border-yellow-200 bg-yellow-50 p-3">
+                    <p className="text-sm text-yellow-900"><strong>Processing:</strong> Your order is being reviewed by our admin team. You'll receive a confirmation email once it's approved.</p>
+                  </div>
+                )}
+
+                {order.status === 'confirmed' && (
+                  <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-3">
+                    <p className="text-sm text-green-900"><strong>Confirmed:</strong> Your order has been approved and is ready for shipping.</p>
+                  </div>
+                )}
+
+                {order.status === 'rejected' && (
+                  <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-3">
+                    <p className="text-sm text-red-900"><strong>Rejected:</strong> Your order was rejected. Please contact support for more information.</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

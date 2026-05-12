@@ -1,21 +1,32 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import NextLink from 'next/link';
 import { formatAuthError, useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signup } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    adminKey: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Check if admin key is passed in query params
+    const adminKey = searchParams.get('adminKey');
+    if (adminKey === process.env.NEXT_PUBLIC_ADMIN_KEY) {
+      setIsAdmin(true);
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -52,17 +63,21 @@ export default function RegisterPage() {
       return;
     }
 
+    // Check admin key if user is trying to create admin account
+    let createAsAdmin = isAdmin;
+    if (formData.adminKey && !isAdmin) {
+      if (formData.adminKey === process.env.NEXT_PUBLIC_ADMIN_KEY) {
+        createAsAdmin = true;
+      } else {
+        setError('Invalid admin key.');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       // Create user with Firebase
-      await signup(formData.email, formData.password);
-      
-      // Store user profile data in localStorage (for now, can be moved to Firestore later)
-      const userData = {
-        name: formData.name,
-        email: formData.email,
-        createdAt: new Date().toISOString(),
-      };
-      localStorage.setItem('fitsApparelUserProfile', JSON.stringify(userData));
+      await signup(formData.email, formData.password, createAsAdmin);
 
       // Redirect to profile page
       router.push('/profile');
@@ -80,6 +95,12 @@ export default function RegisterPage() {
         <p className="mt-2 text-sm text-black/70">
           Join Fits Apparel and start shopping
         </p>
+
+        {isAdmin && (
+          <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+            <strong>Admin Registration:</strong> You are creating an admin account.
+          </div>
+        )}
 
         {error && (
           <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
@@ -147,6 +168,24 @@ export default function RegisterPage() {
               disabled={loading}
             />
           </div>
+
+          {!isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-black">
+                Admin Key (Leave blank for regular user)
+              </label>
+              <input
+                className="mt-2 w-full border border-black/15 bg-white px-4 py-3 text-black placeholder-black/50 transition-colors focus:border-black focus:outline-none"
+                name="adminKey"
+                placeholder="Leave blank if you're a regular user"
+                type="password"
+                value={formData.adminKey}
+                onChange={handleChange}
+                disabled={loading}
+              />
+              <p className="mt-1 text-xs text-black/50">Enter the admin key to create an admin account</p>
+            </div>
+          )}
 
           <button
             className="mt-8 w-full bg-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-white transition-opacity hover:opacity-90 disabled:opacity-50"

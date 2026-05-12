@@ -8,7 +8,10 @@ import {
   signOut, 
   onAuthStateChanged 
 } from 'firebase/auth';
-import { auth } from '@/config/firebase';
+import { auth, db } from '@/config/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+
+const DEFAULT_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@fitsapparel.com';
 
 export function formatAuthError(error: unknown) {
   if (error instanceof Error) {
@@ -28,9 +31,10 @@ export function formatAuthError(error: unknown) {
 
 interface AuthContextType {
   user: User | null;
+  role: 'user' | 'admin' | null;
   loading: boolean;
   error: string | null;
-  signup: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, isAdmin?: boolean) => Promise<void>;
   signin: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -39,24 +43,62 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<'user' | 'admin' | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      
+      // Fetch user role from Firestore
+      if (currentUser) {
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          
+          if (userDocSnap.exists()) {
+            const userRole = userDocSnap.data().role || 'user';
+            setRole(userRole);
+          } else {
+            const inferredRole = currentUser.email === DEFAULT_ADMIN_EMAIL ? 'admin' : 'user';
+            await setDoc(userDocRef, {
+              email: currentUser.email || '',
+              role: inferredRole,
+              createdAt: new Date(),
+            });
+            setRole(inferredRole);
+          }
+        } catch (err) {
+          console.error('Error fetching user role:', err);
+          setRole('user');
+        }
+      } else {
+        setRole(null);
+      }
+      
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, isAdmin?: boolean) => {
     try {
       setError(null);
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       setUser(userCredential.user);
+      
+      // Create user profile in Firestore
+      const userRole = isAdmin ? 'admin' : 'user';
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        email,
+        role: userRole,
+        createdAt: new Date(),
+      });
+      
+      setRole(userRole);
     } catch (err: any) {
       setError(formatAuthError(err));
       throw err;
@@ -86,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, signup, signin, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, error, signup, signin, logout }}>
       {children}
     </AuthContext.Provider>
   );
