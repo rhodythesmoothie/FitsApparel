@@ -1,35 +1,58 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import NextLink from 'next/link';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  updateDoc, 
-  doc, 
-  orderBy, 
-} from 'firebase/firestore';
+import { useEffect, useMemo, useState } from 'react';
+import { collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
+
 import { db } from '@/config/firebase';
-import { useAuth } from '@/context/AuthContext';
 import type { Order } from '@/types';
 
-export default function AdminOrdersPage() {
-  const { user, role, loading: authLoading } = useAuth();
-  const router = useRouter();
-  const [orders, setOrders] = useState<(Order & { docId: string })[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'confirmed' | 'rejected' | 'all'>('pending');
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+type AdminOrder = Order & { docId: string };
 
-  useEffect(() => {
-    // Check if user is admin
-    if (!authLoading && (!user || role !== 'admin')) {
-      router.push('/');
-    }
-  }, [user, role, authLoading, router]);
+type OrderStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'processing'
+  | 'ready_for_pickup'
+  | 'completed'
+  | 'cancelled';
+
+const ORDER_STATUSES: OrderStatus[] = [
+  'pending',
+  'confirmed',
+  'processing',
+  'ready_for_pickup',
+  'completed',
+  'cancelled',
+];
+
+const statusLabel: Record<OrderStatus, string> = {
+  pending: 'Pending',
+  confirmed: 'Confirmed',
+  processing: 'Processing',
+  ready_for_pickup: 'Ready for Pickup',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+function formatDate(value: unknown) {
+  if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+    return (value as { toDate: () => Date }).toDate().toLocaleString();
+  }
+  if (value instanceof Date) {
+    return value.toLocaleString();
+  }
+  if (typeof value === 'string') {
+    return new Date(value).toLocaleString();
+  }
+  return 'N/A';
+}
+
+export default function AdminOrdersPage() {
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | OrderStatus>('pending');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -37,201 +60,147 @@ export default function AdminOrdersPage() {
         setLoading(true);
         setError(null);
 
-        const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
-        const snapshot = await getDocs(q);
-        
-        const fetchedOrders = snapshot.docs.map(doc => ({
-          ...doc.data() as Order,
-          docId: doc.id,
+        const snapshot = await getDocs(query(collection(db, 'orders'), orderBy('createdAt', 'desc')));
+        const fetched = snapshot.docs.map((orderDoc) => ({
+          ...(orderDoc.data() as Order),
+          docId: orderDoc.id,
         }));
 
-        setOrders(fetchedOrders);
-      } catch (err) {
-        console.error('Error fetching orders:', err);
-        setError('Failed to fetch orders. Please try again.');
+        setOrders(fetched);
+      } catch (fetchError) {
+        console.error('Failed fetching admin orders:', fetchError);
+        setError('Unable to fetch orders right now.');
       } finally {
         setLoading(false);
       }
     };
 
-    if (user && role === 'admin') {
-      fetchOrders();
+    fetchOrders();
+  }, []);
+
+  const filteredOrders = useMemo(() => {
+    if (filter === 'all') {
+      return orders;
     }
-  }, [user, role]);
 
-  const filteredOrders =
-    filter === 'all' ? orders : orders.filter((order) => order.status === filter);
+    return orders.filter((order) => order.status === filter || (order.status === 'approved' && filter === 'confirmed') || (order.status === 'rejected' && filter === 'cancelled'));
+  }, [filter, orders]);
 
-  const handleApprove = async (orderId: string, docId: string) => {
+  const handleStatusUpdate = async (docId: string, nextStatus: OrderStatus) => {
     try {
-      setActionLoading(orderId);
-      const orderDoc = doc(db, 'orders', docId);
-      await updateDoc(orderDoc, {
-        status: 'confirmed',
-        updatedAt: new Date(),
+      setSavingId(docId);
+      await updateDoc(doc(db, 'orders', docId), {
+        status: nextStatus,
+        updatedAt: serverTimestamp(),
       });
 
-      // Update local state
-      setOrders(orders.map(order => 
-        order.docId === docId ? { ...order, status: 'confirmed' } : order
-      ));
-    } catch (err) {
-      console.error('Error approving order:', err);
-      setError('Failed to approve order. Please try again.');
+      setOrders((prev) => prev.map((order) => (order.docId === docId ? { ...order, status: nextStatus } : order)));
+    } catch (updateError) {
+      console.error('Failed updating order status:', updateError);
+      setError('Could not update order status.');
     } finally {
-      setActionLoading(null);
+      setSavingId(null);
     }
   };
-
-  const handleReject = async (orderId: string, docId: string) => {
-    try {
-      setActionLoading(orderId);
-      const orderDoc = doc(db, 'orders', docId);
-      await updateDoc(orderDoc, {
-        status: 'rejected',
-        updatedAt: new Date(),
-      });
-
-      // Update local state
-      setOrders(orders.map(order => 
-        order.docId === docId ? { ...order, status: 'rejected' } : order
-      ));
-    } catch (err) {
-      console.error('Error rejecting order:', err);
-      setError('Failed to reject order. Please try again.');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="mx-auto max-w-6xl py-16 text-center md:py-24">
-        <p className="text-black/70">Loading...</p>
-      </div>
-    );
-  }
-
-  if (!user || role !== 'admin') {
-    return (
-      <div className="mx-auto max-w-4xl py-16 md:py-24">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <h1 className="text-3xl font-semibold text-red-900">Access Denied</h1>
-          <p className="mt-4 text-lg text-red-800">You do not have permission to access this page.</p>
-          <NextLink
-            className="mt-8 inline-block border border-red-600 px-6 py-3 text-sm font-medium tracking-[0.2em] text-red-600 transition-colors hover:bg-red-600 hover:text-white"
-            href="/"
-          >
-            BACK HOME
-          </NextLink>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="mx-auto max-w-6xl py-8 md:py-16">
+    <section className="mx-auto max-w-6xl py-6 md:py-10">
       <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-black">Order Management</h1>
-        <p className="mt-2 text-black/70">Review and approve customer orders</p>
+        <h1 className="text-3xl font-semibold text-black md:text-4xl">Orders</h1>
+        <p className="mt-2 text-black/70">Review customer purchases and update fulfillment status.</p>
       </div>
 
-      {error && (
-        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4">
-          <p className="text-sm text-red-900">{error}</p>
-        </div>
-      )}
-
-      {/* Filter Tabs */}
-      <div className="mb-6 flex gap-2 border-b border-black/10">
-        {(['pending', 'approved', 'confirmed', 'rejected', 'all'] as const).map((status) => (
+      <div className="mb-6 flex flex-wrap gap-2">
+        {(['all', ...ORDER_STATUSES] as const).map((status) => (
           <button
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-3 text-sm font-medium transition-colors ${
-              filter === status
-                ? 'border-b-2 border-black text-black'
-                : 'border-b-2 border-transparent text-black/60 hover:text-black'
+            className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition-colors ${
+              filter === status ? 'border-black bg-black text-white' : 'border-black/20 text-black hover:border-black/40'
             }`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {status === 'all' ? 'All' : statusLabel[status]}
           </button>
         ))}
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-black/70">Loading orders...</p>
-        </div>
-      ) : filteredOrders.length === 0 ? (
-        <div className="rounded-2xl border border-black/10 bg-white p-8 text-center">
-          <p className="text-black/70">No orders found.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-2xl border border-black/10 bg-white">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-black/10 bg-black/5">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Order ID</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Customer</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Items</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Total</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Payment</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-black">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.map((order) => (
-                <tr key={order.docId} className="border-b border-black/10 hover:bg-black/2">
-                  <td className="px-6 py-4 text-sm text-black">{order.orderId}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="font-medium text-black">{order.shippingAddress.fullName}</div>
-                    <div className="text-xs text-black/60">{order.userEmail}</div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-black">
-                    {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-medium text-black">₱{order.total.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-sm text-black capitalize">{order.paymentMethod === 'cod' ? 'COD' : order.paymentMethod}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                      order.status === 'pending' ? 'bg-yellow-100 text-yellow-900' :
-                      order.status === 'approved' ? 'bg-blue-100 text-blue-900' :
-                      order.status === 'confirmed' ? 'bg-green-100 text-green-900' :
-                      'bg-red-100 text-red-900'
-                    }`}>
-                      {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-2">
-                      {order.status === 'pending' && (
-                        <>
-                          <button
-                            onClick={() => handleApprove(order.orderId, order.docId)}
-                            disabled={actionLoading === order.orderId}
-                            className="px-3 py-1 rounded bg-green-600 text-white text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-                          >
-                            {actionLoading === order.orderId ? 'Approving...' : 'Approve'}
-                          </button>
-                          <button
-                            onClick={() => handleReject(order.orderId, order.docId)}
-                            disabled={actionLoading === order.orderId}
-                            className="px-3 py-1 rounded bg-red-600 text-white text-xs font-medium transition-opacity hover:opacity-90 disabled:opacity-50"
-                          >
-                            {actionLoading === order.orderId ? 'Rejecting...' : 'Reject'}
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+          {error}
         </div>
       )}
-    </div>
+
+      {loading ? (
+        <div className="rounded-2xl border border-black/10 bg-white p-8 text-center text-black/70">Loading orders...</div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="rounded-2xl border border-black/10 bg-white p-8 text-center text-black/70">No matching orders found.</div>
+      ) : (
+        <div className="space-y-4">
+          {filteredOrders.map((order) => (
+            <article key={order.docId} className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm md:p-6">
+              <div className="grid gap-4 md:grid-cols-6">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Order</p>
+                  <p className="mt-1 font-mono text-sm text-black">{order.orderId}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Customer</p>
+                  <p className="mt-1 text-sm text-black">{order.shippingAddress.fullName}</p>
+                  <p className="text-xs text-black/60">{order.userEmail}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Date</p>
+                  <p className="mt-1 text-sm text-black">{formatDate(order.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Total</p>
+                  <p className="mt-1 text-sm font-semibold text-black">₱{order.total.toFixed(2)}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Payment</p>
+                  <p className="mt-1 text-sm text-black uppercase">{order.paymentMethod}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Status</p>
+                  <select
+                    className="mt-1 w-full rounded border border-black/20 px-2 py-1 text-sm"
+                    value={order.status === 'approved' ? 'confirmed' : order.status === 'rejected' ? 'cancelled' : order.status}
+                    onChange={(event) => handleStatusUpdate(order.docId, event.target.value as OrderStatus)}
+                    disabled={savingId === order.docId}
+                  >
+                    {ORDER_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {statusLabel[status]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-black/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Products</p>
+                  <div className="mt-2 space-y-2">
+                    {order.items.map((item, idx) => (
+                      <p key={`${order.docId}-item-${idx}`} className="text-sm text-black">
+                        {item.name} x{item.quantity} ({item.size}) - ₱{(item.price * item.quantity).toFixed(2)}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-black/10 p-4">
+                  <p className="text-xs uppercase tracking-[0.12em] text-black/55">Shipping / Contact</p>
+                  <p className="mt-2 text-sm text-black">{order.shippingAddress.fullName}</p>
+                  <p className="text-sm text-black/75">{order.shippingAddress.phone}</p>
+                  <p className="text-sm text-black/75">
+                    {order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.province} {order.shippingAddress.postalCode}
+                  </p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }

@@ -2,15 +2,26 @@
 
 import { useCart } from '@/context/CartContext';
 import NextLink from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+
+import { useAuth } from '@/context/AuthContext';
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, getTotalPrice } = useCart();
+  const { role } = useAuth();
+  const router = useRouter();
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [role, router]);
 
   if (!hydrated) {
     return (
@@ -18,6 +29,10 @@ export default function CartPage() {
         <p className="text-black/70">Loading...</p>
       </div>
     );
+  }
+
+  if (role === 'admin') {
+    return null;
   }
 
   if (items.length === 0) {

@@ -4,8 +4,10 @@ import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 
-import { getProductBySlug, products, sizeOptions } from "@/config/products";
+import { sizeOptions } from "@/config/products";
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
+import { useProducts } from '@/hooks/useProducts';
 
 export default function ProductPage({
   params,
@@ -14,12 +16,22 @@ export default function ProductPage({
 }) {
   const router = useRouter();
   const { addItem } = useCart();
+  const { role } = useAuth();
+  const { getProductBySlug, loading } = useProducts();
   const { slug } = use(params);
   const product = getProductBySlug(slug);
   
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [addedToCart, setAddedToCart] = useState(false);
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-7xl py-6 text-center md:py-10">
+        <p className="text-black/70">Loading product...</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -36,6 +48,10 @@ export default function ProductPage({
   }
 
   const handleAddToCart = () => {
+    if (role === 'admin') {
+      return;
+    }
+
     if (!selectedSize) {
       alert('Please select a size');
       return;
@@ -55,6 +71,10 @@ export default function ProductPage({
   };
 
   const handleBuyNow = () => {
+    if (role === 'admin') {
+      return;
+    }
+
     if (!selectedSize) {
       alert('Please select a size');
       return;
@@ -100,7 +120,19 @@ export default function ProductPage({
             {product.description}
           </p>
 
-          {product.soldOut ? (
+          {role === 'admin' ? (
+            <div className="mt-10 rounded-xl border border-black/10 bg-black/[0.03] p-5">
+              <p className="text-sm text-black/75">
+                Admin accounts cannot add products to cart or checkout. Use the admin product manager to update this item.
+              </p>
+              <NextLink
+                href="/admin/products"
+                className="mt-4 inline-flex rounded-lg bg-black px-4 py-2 text-xs font-semibold tracking-[0.12em] text-white"
+              >
+                MANAGE PRODUCTS
+              </NextLink>
+            </div>
+          ) : product.soldOut ? (
             <>
               <div className="mt-8">
                 <div className="flex items-center justify-between">
