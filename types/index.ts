@@ -40,7 +40,15 @@ export interface Order {
   shippingCost: number;
   subtotal: number;
   total: number;
-  status: 'pending' | 'approved' | 'confirmed' | 'rejected';
+  status:
+    | 'pending'
+    | 'confirmed'
+    | 'processing'
+    | 'ready_for_pickup'
+    | 'completed'
+    | 'cancelled'
+    | 'approved'
+    | 'rejected';
   createdAt: Date;
   updatedAt: Date;
 }

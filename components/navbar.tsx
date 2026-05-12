@@ -9,18 +9,30 @@ import {
   NavbarMenuItem,
 } from "@heroui/navbar";
 
-import { Link } from "@heroui/link";
-import { link as linkStyles } from "@heroui/theme";
 import NextLink from "next/link";
 import clsx from "clsx";
 import { usePathname, useRouter } from "next/navigation";
 
-import { siteConfig } from "@/config/site";
 import {
   ProfileIcon,
   CartIcon,
 } from "@/components/icons";
 import { useAuth } from "@/context/AuthContext";
+
+const BUYER_NAV_ITEMS = [
+  { label: "Home", href: "/" },
+  { label: "Products", href: "/shop" },
+  { label: "Blog", href: "/blog" },
+  { label: "About Us", href: "/about" },
+];
+
+const ADMIN_NAV_ITEMS = [
+  { label: "Dashboard", href: "/admin" },
+  { label: "Orders", href: "/admin/orders" },
+  { label: "Products", href: "/admin/products" },
+  { label: "Customers", href: "/admin/customers" },
+  { label: "Sales", href: "/admin/sales" },
+];
 
 export const Navbar = () => {
   const pathname = usePathname();
@@ -28,11 +40,13 @@ export const Navbar = () => {
   const isHomePage = pathname === "/";
   const isProfileSection = pathname.startsWith("/profile") || pathname.startsWith("/login");
   const { user, role, logout, loading } = useAuth();
+  const isAdmin = role === "admin";
+  const navItems = isAdmin ? ADMIN_NAV_ITEMS : BUYER_NAV_ITEMS;
 
   const handleLogout = async () => {
     try {
       await logout();
-      router.push("/");
+      router.push("/login");
     } catch (err) {
       console.error("Logout failed:", err);
     }
@@ -65,14 +79,13 @@ export const Navbar = () => {
           />
         </NextLink>
         <ul className="hidden lg:flex gap-5 justify-start ml-2 md:gap-6 md:ml-4">
-          {siteConfig.navItems.map((item) => {
+          {navItems.map((item) => {
             const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
             return (
               <NavbarItem key={item.href}>
                 <NextLink
                   className={clsx(
-                    linkStyles({ color: "foreground" }),
-                    "text-base !text-black !opacity-100 md:text-lg transition-colors duration-200 pb-1",
+                    "text-base text-black md:text-lg transition-colors duration-200 pb-1",
                     isActive 
                       ? "font-semibold border-b-2 border-black" 
                       : "hover:text-black/70"
@@ -91,16 +104,8 @@ export const Navbar = () => {
         <NavbarItem className="flex gap-1 items-center sm:gap-2 md:gap-4">
           {!loading && (
             <>
-              {user ? (
+              {user && !isAdmin ? (
                 <>
-                  {role === 'admin' && (
-                    <NextLink
-                      className="hidden text-sm font-medium text-black transition-colors hover:text-black/70 sm:inline md:text-base"
-                      href="/admin/orders"
-                    >
-                      Admin
-                    </NextLink>
-                  )}
                   <NextLink
                     aria-label="Profile"
                     className={clsx(
@@ -118,6 +123,13 @@ export const Navbar = () => {
                     Sign Out
                   </button>
                 </>
+              ) : user && isAdmin ? (
+                <button
+                  onClick={handleLogout}
+                  className="hidden rounded-lg border border-black/20 px-3 py-2 text-sm font-medium text-black transition-colors hover:bg-black hover:text-white sm:inline-flex"
+                >
+                  Logout
+                </button>
               ) : (
                 <NextLink
                   aria-label="Profile"
@@ -132,31 +144,53 @@ export const Navbar = () => {
               )}
             </>
           )}
-          <NextLink
-            aria-label="Cart"
-            className="rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:p-2.5 md:p-3"
-            href="/cart"
-          >
-            <CartIcon className="text-lg md:text-xl" />
-          </NextLink>
+          {!isAdmin && (
+            <NextLink
+              aria-label="Cart"
+              className="rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:p-2.5 md:p-3"
+              href="/cart"
+            >
+              <CartIcon className="text-lg md:text-xl" />
+            </NextLink>
+          )}
           <NavbarMenuToggle className="lg:hidden" />
         </NavbarItem>
       </NavbarContent>
 
       <NavbarMenu>
         <div className="mx-4 mt-2 flex flex-col gap-2">
-          {siteConfig.navMenuItems.map((item, index) => (
-            <NavbarMenuItem key={`${item}-${index}`}>
-              <Link
-                className="!text-black !opacity-100"
-                color="foreground"
-                href={item.href}
-                size="lg"
-              >
+          {navItems.map((item) => (
+            <NavbarMenuItem key={item.href}>
+              <NextLink className="text-black text-lg" href={item.href}>
                 {item.label}
-              </Link>
+              </NextLink>
             </NavbarMenuItem>
           ))}
+          {user && !isAdmin && (
+            <NavbarMenuItem key="mobile-profile">
+              <NextLink className="text-black text-lg" href="/profile">
+                Profile
+              </NextLink>
+            </NavbarMenuItem>
+          )}
+          {!isAdmin && (
+            <NavbarMenuItem key="mobile-cart">
+              <NextLink className="text-black text-lg" href="/cart">
+                Cart
+              </NextLink>
+            </NavbarMenuItem>
+          )}
+          {user && (
+            <NavbarMenuItem key="mobile-logout">
+              <button
+                onClick={handleLogout}
+                className="text-left text-black text-lg"
+                type="button"
+              >
+                Logout
+              </button>
+            </NavbarMenuItem>
+          )}
         </div>
       </NavbarMenu>
     </HeroUINavbar>

@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
+import { doc, getDoc } from 'firebase/firestore';
+
+import { auth, db } from '@/config/firebase';
 import { formatAuthError, useAuth } from '@/context/AuthContext';
 
 const DEFAULT_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@fitsapparel.com';
@@ -45,7 +48,16 @@ export default function LoginPage() {
 
     try {
       await signin(loginEmail, password);
-      router.push('/profile');
+      const currentUser = auth.currentUser;
+      let nextRoute = '/';
+
+      if (currentUser?.uid) {
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userRole = (userDoc.data()?.role || 'user') as 'admin' | 'user';
+        nextRoute = userRole === 'admin' ? '/admin' : '/';
+      }
+
+      router.push(nextRoute);
     } catch (err: any) {
       const message = formatAuthError(err);
       if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('wrong')) {

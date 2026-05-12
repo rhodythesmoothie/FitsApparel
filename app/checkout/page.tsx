@@ -123,7 +123,7 @@ function getJtShippingEstimate(
 
 export default function CheckoutPage() {
   const { items, getTotalPrice, clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const router = useRouter();
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState<'shipping' | 'payment' | 'confirmation'>('shipping');
@@ -159,6 +159,12 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
+    if (role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [role, router]);
+
+  useEffect(() => {
     if (user?.email) {
       setShippingAddress((prev) => ({
         ...prev,
@@ -182,6 +188,10 @@ export default function CheckoutPage() {
         <p className="text-black/70">Loading...</p>
       </div>
     );
+  }
+
+  if (role === 'admin') {
+    return null;
   }
 
   if (items.length === 0 && step !== 'confirmation') {

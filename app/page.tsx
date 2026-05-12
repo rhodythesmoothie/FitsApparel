@@ -1,8 +1,12 @@
+"use client";
+
 import NextLink from "next/link";
 
-import { products } from "@/config/products";
+import { useProducts } from "@/hooks/useProducts";
 
 export default function Home() {
+  const { products, loading } = useProducts();
+
   return (
     <>
       <section
@@ -35,7 +39,7 @@ export default function Home() {
           </p>
 
           <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((shirt) => (
+            {!loading && products.map((shirt) => (
               <div
                 key={shirt.slug}
                 className="overflow-hidden rounded-xl border border-black/10 bg-white transition-transform duration-200 hover:shadow-lg hover:-translate-y-1"
