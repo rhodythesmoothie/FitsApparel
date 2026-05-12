@@ -5,53 +5,69 @@ import { products } from "@/config/products";
 export default function ShopPage() {
 
   return (
-    <section className="pb-14 md:pb-20">
-      <div className="mx-auto max-w-6xl rounded-2xl bg-white/90 p-5 shadow-xl backdrop-blur-sm md:p-8">
-        <h2 className="text-2xl font-semibold text-black md:text-3xl">
-          Available Shirts
-        </h2>
-        <p className="mt-2 text-sm text-black/70 md:text-base">
-        </p>
+    <section className="py-8 md:py-12">
+      <div className="mx-auto max-w-6xl rounded-2xl bg-white/95 p-5 shadow-xl backdrop-blur-sm md:p-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-black md:text-5xl">
+            Shop
+          </h1>
+          <p className="mt-3 text-base text-black/70 md:text-lg">
+            Browse our collection of premium Fits Apparel shirt designs.
+          </p>
+        </div>
 
-        <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((shirt) => (
-            <NextLink
+            <div
               key={shirt.slug}
-              className="block overflow-hidden rounded-xl border border-black/10 bg-white transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg"
-              href={`/shop/${shirt.slug}`}
+              className="overflow-hidden rounded-xl border border-black/10 bg-white transition-transform duration-200 hover:shadow-lg hover:-translate-y-1"
             >
               <article className="relative">
                 {shirt.soldOut ? (
-                  <span className="absolute left-3 top-3 z-10 bg-[#e8e8e8] px-3 py-1 text-xs tracking-[0.3em] text-black/70">
-                    SOLD OUT
-                  </span>
+                  <div className="absolute inset-0 bg-black/30 z-20 flex items-center justify-center">
+                    <span className="bg-black text-white px-4 py-2 rounded-lg font-semibold">SOLD OUT</span>
+                  </div>
                 ) : null}
                 <img
                   alt={shirt.name}
-                  className="h-80 w-full object-cover"
+                  className="h-80 w-full object-cover object-center"
                   src={shirt.image}
                 />
                 <div className="p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <h3 className="text-xl font-medium leading-tight text-black">{shirt.name}</h3>
-                    <p className="text-lg font-medium leading-none text-black">{shirt.price}</p>
+                  <div className="flex items-start justify-between gap-4 mb-3">
+                    <h3 className="text-lg font-medium leading-tight text-black flex-1">{shirt.name}</h3>
+                    <p className="text-lg font-semibold leading-none text-black">{shirt.price}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <NextLink
+                      href={`/shop/${shirt.slug}`}
+                      className={`flex-1 py-2 px-3 text-center text-sm font-medium rounded-lg transition-colors duration-200 ${
+                        shirt.soldOut
+                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                          : 'bg-black text-white hover:bg-black/90'
+                      }`}
+                    >
+                      {shirt.soldOut ? 'Sold Out' : 'View Details'}
+                    </NextLink>
                   </div>
                 </div>
               </article>
-            </NextLink>
+            </div>
           ))}
         </div>
 
-        <div className="mt-10 rounded-xl border border-black/10 bg-white p-4 md:p-6" id="size-chart">
-          <h2 className="text-2xl font-semibold text-black md:text-3xl">Size Chart</h2>
-          <p className="mt-2 text-sm text-black/70 md:text-base">
+        <div className="mt-14 rounded-xl border border-black/10 bg-white p-6 md:p-8" id="size-chart">
+          <h2 className="text-3xl font-bold text-black md:text-4xl">Shirt Size Guide</h2>
+          <p className="mt-3 text-base text-black/70 md:text-lg">
             Find your best fit before placing an order.
           </p>
-          <img
-            alt="Fits Apparel Size Chart"
-            className="mt-5 mx-auto w-full max-w-2xl rounded-lg object-contain"
-            src="/sizechart.png"
-          />
+          <div className="mt-6 flex justify-center">
+            <img
+              alt="Fits Apparel Size Chart"
+              className="max-w-lg w-full rounded-lg object-contain border border-black/10"
+              src="/sizechart.png"
+            />
+          </div>
         </div>
       </div>
     </section>

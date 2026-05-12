@@ -26,7 +26,7 @@ export const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const isHomePage = pathname === "/";
-  const { user, logout, loading } = useAuth();
+  const { user, role, logout, loading } = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -43,11 +43,11 @@ export const Navbar = () => {
       position={isHomePage ? "static" : "sticky"}
       className={clsx(
         isHomePage
-          ? "absolute left-0 right-0 top-0 z-50 bg-transparent shadow-none border-none backdrop-blur-0"
-          : "bg-white shadow-sm",
+          ? "absolute left-0 right-0 top-0 z-50 bg-white/95 shadow-md border-none backdrop-blur-sm"
+          : "bg-white shadow-md",
         "min-h-20 px-3 py-3 sm:px-4 md:min-h-24 md:px-8 md:py-4",
       )}
-      style={isHomePage ? { backgroundColor: "transparent" } : undefined}
+      style={isHomePage ? { backgroundColor: "rgba(255, 255, 255, 0.95)" } : undefined}
     >
       <NavbarContent className="basis-1/5 sm:basis-full gap-3 md:gap-6" justify="start">
         <NextLink
@@ -64,19 +64,25 @@ export const Navbar = () => {
           />
         </NextLink>
         <ul className="hidden lg:flex gap-5 justify-start ml-2 md:gap-6 md:ml-4">
-          {siteConfig.navItems.map((item) => (
-            <NavbarItem key={item.href}>
-              <NextLink
-                className={clsx(
-                  linkStyles({ color: "foreground" }),
-                  "text-base !text-black !opacity-100 data-[active=true]:!text-black data-[active=true]:font-medium md:text-lg",
-                )}
-                href={item.href}
-              >
-                {item.label}
-              </NextLink>
-            </NavbarItem>
-          ))}
+          {siteConfig.navItems.map((item) => {
+            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            return (
+              <NavbarItem key={item.href}>
+                <NextLink
+                  className={clsx(
+                    linkStyles({ color: "foreground" }),
+                    "text-base !text-black !opacity-100 md:text-lg transition-colors duration-200 pb-1",
+                    isActive 
+                      ? "font-semibold border-b-2 border-black" 
+                      : "hover:text-black/70"
+                  )}
+                  href={item.href}
+                >
+                  {item.label}
+                </NextLink>
+              </NavbarItem>
+            );
+          })}
         </ul>
       </NavbarContent>
 
@@ -86,6 +92,14 @@ export const Navbar = () => {
             <>
               {user ? (
                 <>
+                  {role === 'admin' && (
+                    <NextLink
+                      className="hidden text-sm font-medium text-black transition-colors hover:text-black/70 sm:inline md:text-base"
+                      href="/admin/orders"
+                    >
+                      Admin
+                    </NextLink>
+                  )}
                   <NextLink
                     aria-label="Profile"
                     className="hidden rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:inline-flex sm:p-2.5 md:p-3"
