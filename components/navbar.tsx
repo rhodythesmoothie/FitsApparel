@@ -26,6 +26,7 @@ export const Navbar = () => {
   const pathname = usePathname();
   const router = useRouter();
   const isHomePage = pathname === "/";
+  const isProfileSection = pathname.startsWith("/profile") || pathname.startsWith("/login");
   const { user, role, logout, loading } = useAuth();
 
   const handleLogout = async () => {
@@ -102,7 +103,10 @@ export const Navbar = () => {
                   )}
                   <NextLink
                     aria-label="Profile"
-                    className="hidden rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:inline-flex sm:p-2.5 md:p-3"
+                    className={clsx(
+                      "hidden rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:inline-flex sm:p-2.5 md:p-3",
+                      isProfileSection && "bg-black/5 ring-1 ring-black/10",
+                    )}
                     href="/profile"
                   >
                     <ProfileIcon className="text-lg md:text-xl" />
@@ -117,7 +121,10 @@ export const Navbar = () => {
               ) : (
                 <NextLink
                   aria-label="Profile"
-                  className="hidden rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:inline-flex sm:p-2.5 md:p-3"
+                  className={clsx(
+                    "hidden rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:inline-flex sm:p-2.5 md:p-3",
+                    isProfileSection && "bg-black/5 ring-1 ring-black/10",
+                  )}
                   href="/login"
                 >
                   <ProfileIcon className="text-lg md:text-xl" />

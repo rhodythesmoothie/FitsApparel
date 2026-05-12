@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
-import { collection, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { useAuth } from '@/context/AuthContext';
 import type { Order } from '@/types';
@@ -14,6 +14,18 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<(Order & { docId: string })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const getCreatedAtValue = (value: unknown) => {
+    if (value && typeof value === 'object' && 'seconds' in value) {
+      return (value as { seconds: number }).seconds;
+    }
+
+    if (value instanceof Date) {
+      return value.getTime() / 1000;
+    }
+
+    return 0;
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -27,22 +39,27 @@ export default function ProfilePage() {
 
       try {
         setLoading(true);
+        setError(null);
         const q = query(
           collection(db, 'orders'),
           where('userId', '==', user.uid),
-          orderBy('createdAt', 'desc')
         );
         const snapshot = await getDocs(q);
         
-        const fetchedOrders = snapshot.docs.map(doc => ({
-          ...doc.data() as Order,
-          docId: doc.id,
-        }));
+        const fetchedOrders = snapshot.docs
+          .map((doc) => ({
+            ...doc.data() as Order,
+            docId: doc.id,
+          }))
+          .sort((a, b) => {
+            return getCreatedAtValue(b.createdAt) - getCreatedAtValue(a.createdAt);
+          });
 
         setOrders(fetchedOrders);
       } catch (err) {
         console.error('Error fetching orders:', err);
-        setError('Failed to load orders');
+        setOrders([]);
+        setError(null);
       } finally {
         setLoading(false);
       }
@@ -81,7 +98,7 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="mx-auto max-w-md py-16 text-center md:py-24">
+      <div className="mx-auto max-w-md py-12 text-center md:py-16">
         <p className="text-black/70">Loading...</p>
       </div>
     );
@@ -92,21 +109,26 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl py-8 md:py-16">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-black">My Profile</h1>
+    <div className="mx-auto max-w-5xl py-4 md:py-8">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-3xl font-semibold text-black md:text-4xl">My Profile</h1>
         <p className="mt-2 text-black/70">Manage your account and view orders</p>
       </div>
 
       {/* Profile Info */}
-      <div className="mb-12 rounded-2xl border border-black/10 bg-white p-8">
-        <div className="grid gap-8 md:grid-cols-2">
+      <div className="mb-10 rounded-2xl border border-black/10 bg-white p-6 shadow-sm md:p-8">
+        <div className="space-y-6">
           <div>
+            <h2 className="text-lg font-semibold text-black">Account Information</h2>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 md:gap-8">
+          <div className="rounded-xl bg-black/[0.02] p-4">
             <p className="text-sm font-medium text-black/70">Email Address</p>
             <p className="mt-2 text-lg text-black">{user.email}</p>
           </div>
 
-          <div>
+          <div className="rounded-xl bg-black/[0.02] p-4">
             <p className="text-sm font-medium text-black/70">Account Created</p>
             <p className="mt-2 text-lg text-black">
               {user.metadata?.creationTime
@@ -114,41 +136,39 @@ export default function ProfilePage() {
                 : 'N/A'}
             </p>
           </div>
+          </div>
         </div>
 
-        <div className="mt-8 space-y-3 border-t border-black/10 pt-8">
+        <div className="mt-6 flex flex-col gap-3 border-t border-black/10 pt-6 sm:flex-row">
+          <NextLink
+            className="block w-full rounded-lg bg-black px-6 py-3 text-center text-sm font-semibold tracking-[0.2em] text-white transition-colors hover:bg-black/90"
+            href="/shop"
+          >
+            CONTINUE SHOPPING
+          </NextLink>
           <button
-            className="w-full border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white"
+            className="w-full rounded-lg border border-black/20 px-6 py-3 text-sm font-semibold tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white sm:w-auto sm:flex-1"
             onClick={handleLogout}
             type="button"
           >
             LOG OUT
           </button>
-          <NextLink
-            className="block w-full border border-black/20 bg-black/5 px-6 py-3 text-center text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black/10"
-            href="/shop"
-          >
-            CONTINUE SHOPPING
-          </NextLink>
         </div>
       </div>
 
       {/* Orders Section */}
       <div>
-        <h2 className="text-2xl font-semibold text-black">Order History</h2>
+        <h2 className="text-2xl font-semibold text-black md:text-3xl">Order History</h2>
         <p className="mt-2 text-black/70">View and track all your orders</p>
 
-        {error && (
-          <div className="mt-6 rounded-lg border border-red-200 bg-red-50 p-4">
-            <p className="text-sm text-red-900">{error}</p>
-          </div>
-        )}
-
         {orders.length === 0 ? (
-          <div className="mt-6 rounded-2xl border border-black/10 bg-white p-8 text-center">
-            <p className="text-black/70">No orders yet.</p>
+          <div className="mt-6 rounded-2xl border border-black/10 bg-white p-8 text-center shadow-sm">
+            <p className="text-lg font-medium text-black">No orders yet.</p>
+            <p className="mt-2 text-sm text-black/65">
+              You have not placed any orders yet. Start shopping to view your order history here.
+            </p>
             <NextLink
-              className="mt-6 inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white"
+              className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-6 py-3 text-sm font-semibold tracking-[0.2em] text-white transition-colors hover:bg-black/90"
               href="/shop"
             >
               START SHOPPING
@@ -157,7 +177,7 @@ export default function ProfilePage() {
         ) : (
           <div className="mt-6 space-y-4">
             {orders.map((order) => (
-              <div key={order.docId} className="rounded-2xl border border-black/10 bg-white p-6">
+              <div key={order.docId} className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm md:p-6">
                 <div className="grid gap-4 md:grid-cols-5">
                   <div>
                     <p className="text-sm font-medium text-black/70">Order Number</p>

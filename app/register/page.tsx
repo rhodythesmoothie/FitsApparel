@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 import { formatAuthError, useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { signup } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,12 +20,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Check if admin key is passed in query params
-    const adminKey = searchParams.get('adminKey');
+    const adminKey = new URLSearchParams(window.location.search).get('adminKey');
     if (adminKey === process.env.NEXT_PUBLIC_ADMIN_KEY) {
       setIsAdmin(true);
     }
-  }, [searchParams]);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
