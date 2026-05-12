@@ -10,6 +10,22 @@ import {
 } from 'firebase/auth';
 import { auth } from '@/config/firebase';
 
+function formatAuthError(error: unknown) {
+  if (error instanceof Error) {
+    if (error.message.includes('auth/configuration-not-found')) {
+      return 'Firebase Authentication is not enabled for this project. In Firebase Console, open Authentication and enable Email/Password sign-in.';
+    }
+
+    if (error.message.includes('auth/api-key-not-valid')) {
+      return 'Firebase configuration is invalid. Check the web app config in Firebase Console and update client/web/.env.local.';
+    }
+
+    return error.message;
+  }
+
+  return 'An unexpected authentication error occurred.';
+}
+
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -42,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       setUser(userCredential.user);
     } catch (err: any) {
-      setError(err.message);
+      setError(formatAuthError(err));
       throw err;
     }
   };
@@ -53,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       setUser(userCredential.user);
     } catch (err: any) {
-      setError(err.message);
+      setError(formatAuthError(err));
       throw err;
     }
   };
@@ -64,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await signOut(auth);
       setUser(null);
     } catch (err: any) {
-      setError(err.message);
+      setError(formatAuthError(err));
       throw err;
     }
   };
