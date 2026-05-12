@@ -1,0 +1,567 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import NextLink from 'next/link';
+import { useRouter } from 'next/navigation';
+
+import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
+
+type ShippingAddress = {
+  fullName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  province: string;
+  zipCode: string;
+  country: string;
+};
+
+type PaymentMethod = 'gcash' | 'cod' | 'card';
+type ShippingZone = 'local' | 'intra-region' | 'inter-island';
+type PackagingType = 'pouch' | 'box';
+
+type PaymentInfo = {
+  cardName: string;
+  cardNumber: string;
+  expiryDate: string;
+  cvv: string;
+};
+
+const PAYMENT_METHODS: Array<{
+  value: PaymentMethod;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: 'gcash',
+    label: 'GCash',
+    description: 'Send payment to 09395221808',
+  },
+  {
+    value: 'cod',
+    label: 'Cash on Delivery',
+    description: 'Pay when your parcel arrives',
+  },
+  {
+    value: 'card',
+    label: 'Card',
+    description: 'Visa, Mastercard, debit, or credit card',
+  },
+];
+
+const PRODUCT_WEIGHT_KG: Record<string, number> = {
+  'fa-tee-white': 0.25,
+  'fa-pride-tee': 0.25,
+  'fa-tee-black': 0.25,
+  'fa-summer-tee': 0.25,
+  'fa-area51-tee': 0.25,
+};
+
+const SHIPPING_MULTIPLIER: Record<ShippingZone, number> = {
+  local: 1,
+  'intra-region': 1.15,
+  'inter-island': 1.3,
+};
+
+const PACKAGING_WEIGHT_KG: Record<PackagingType, number> = {
+  pouch: 0.05,
+  box: 0.15,
+};
+
+const PACKAGING_FEE: Record<PackagingType, number> = {
+  pouch: 0,
+  box: 20,
+};
+
+const SHIPPING_BASE_RATE_BY_WEIGHT = [
+  { maxKg: 0.5, rate: 90 },
+  { maxKg: 1, rate: 160 },
+  { maxKg: 3, rate: 185 },
+  { maxKg: 4, rate: 275 },
+];
+
+function getProductWeightKg(slug: string) {
+  return PRODUCT_WEIGHT_KG[slug] ?? 0.25;
+}
+
+function getVolumetricWeightKg(packagingType: PackagingType) {
+  const dimensions =
+    packagingType === 'pouch'
+      ? { length: 28, width: 22, height: 3 }
+      : { length: 32, width: 25, height: 8 };
+
+  return (dimensions.length * dimensions.width * dimensions.height) / 6000;
+}
+
+function getJtShippingEstimate(
+  actualWeightKg: number,
+  zone: ShippingZone,
+  packagingType: PackagingType,
+) {
+  const billableWeight = Math.max(
+    actualWeightKg + PACKAGING_WEIGHT_KG[packagingType],
+    getVolumetricWeightKg(packagingType),
+  );
+
+  const baseRate =
+    SHIPPING_BASE_RATE_BY_WEIGHT.find((bucket) => billableWeight <= bucket.maxKg)
+      ?.rate ??
+    Math.round(275 + Math.max(0, billableWeight - 4) * 70);
+
+  const computed =
+    Math.round(
+      (baseRate * SHIPPING_MULTIPLIER[zone] + PACKAGING_FEE[packagingType]) * 100,
+    ) / 100;
+
+  return { billableWeight, baseRate, computed };
+}
+
+export default function CheckoutPage() {
+  const { items, getTotalPrice, clearCart } = useCart();
+  const { user } = useAuth();
+  const router = useRouter();
+  const [hydrated, setHydrated] = useState(false);
+  const [step, setStep] = useState<'shipping' | 'payment' | 'confirmation'>('shipping');
+  const [loading, setLoading] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
+  const [shippingZone, setShippingZone] = useState<ShippingZone>('local');
+  const [packagingType, setPackagingType] = useState<PackagingType>('pouch');
+
+  const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
+    fullName: '',
+    email: user?.email || '',
+    phone: '',
+    address: '',
+    city: '',
+    province: '',
+    zipCode: '',
+    country: 'Philippines',
+  });
+
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
+    cardName: '',
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (user?.email) {
+      setShippingAddress((prev) => ({
+        ...prev,
+        email: prev.email || user.email || '',
+      }));
+    }
+  }, [user?.email]);
+
+  const totalPrice = getTotalPrice();
+  const actualWeightKg = useMemo(
+    () => items.reduce((total, item) => total + getProductWeightKg(item.slug) * item.quantity, 0),
+    [items],
+  );
+  const shippingEstimate = getJtShippingEstimate(actualWeightKg, shippingZone, packagingType);
+  const shippingCost = shippingEstimate.computed;
+  const finalTotal = totalPrice + shippingCost;
+
+  if (!hydrated) {
+    return (
+      <div className="mx-auto max-w-6xl py-16 text-center md:py-24">
+        <p className="text-black/70">Loading...</p>
+      </div>
+    );
+  }
+
+  if (items.length === 0 && step !== 'confirmation') {
+    return (
+      <div className="mx-auto max-w-4xl py-16 md:py-24">
+        <div className="rounded-2xl border border-black/10 bg-white p-8">
+          <h1 className="text-3xl font-semibold text-black">Checkout</h1>
+          <p className="mt-6 text-lg text-black/70">Your cart is empty.</p>
+          <NextLink
+            className="mt-8 inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white"
+            href="/shop"
+          >
+            CONTINUE SHOPPING
+          </NextLink>
+        </div>
+      </div>
+    );
+  }
+
+  const validateShippingAddress = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!shippingAddress.fullName.trim()) newErrors.fullName = 'Full name is required';
+    if (!shippingAddress.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) newErrors.email = 'Invalid email format';
+    if (!shippingAddress.phone.trim()) newErrors.phone = 'Phone number is required';
+    if (!shippingAddress.address.trim()) newErrors.address = 'Address is required';
+    if (!shippingAddress.city.trim()) newErrors.city = 'City is required';
+    if (!shippingAddress.province.trim()) newErrors.province = 'Province is required';
+    if (!shippingAddress.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validatePaymentInfo = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (paymentMethod === 'card') {
+      if (!paymentInfo.cardName.trim()) {
+        newErrors.cardName = 'Cardholder name is required';
+      }
+      if (!paymentInfo.cardNumber.trim()) {
+        newErrors.cardNumber = 'Card number is required';
+      } else if (!/^\d{16}$/.test(paymentInfo.cardNumber.replace(/\s/g, ''))) {
+        newErrors.cardNumber = 'Card number must be 16 digits';
+      }
+      if (!paymentInfo.expiryDate.trim()) {
+        newErrors.expiryDate = 'Expiry date is required';
+      } else if (!/^\d{2}\/\d{2}$/.test(paymentInfo.expiryDate)) {
+        newErrors.expiryDate = 'Format should be MM/YY';
+      }
+      if (!paymentInfo.cvv.trim()) {
+        newErrors.cvv = 'CVV is required';
+      } else if (!/^\d{3,4}$/.test(paymentInfo.cvv)) {
+        newErrors.cvv = 'CVV must be 3-4 digits';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleShippingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validateShippingAddress()) {
+      setErrors({});
+      setStep('payment');
+    }
+  };
+
+  const handlePaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validatePaymentInfo()) return;
+
+    setErrors({});
+    setLoading(true);
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const orderNum = `FIT-${Date.now()}`;
+    setOrderNumber(orderNum);
+    clearCart();
+    setStep('confirmation');
+    setLoading(false);
+  };
+
+  const handleBackToCart = () => {
+    router.push('/cart');
+  };
+
+  if (step === 'confirmation') {
+    return (
+      <div className="mx-auto max-w-4xl py-16 md:py-24">
+        <div className="rounded-2xl border border-black/10 bg-white p-8 text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-black">
+            <svg className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+            </svg>
+          </div>
+
+          <h1 className="text-3xl font-semibold text-black">Order Confirmed!</h1>
+          <p className="mt-4 text-lg text-black/70">Thank you for your purchase.</p>
+
+          <div className="mt-8 rounded-lg border border-black/10 bg-black/5 p-6">
+            <p className="text-sm text-black/70">Order Number</p>
+            <p className="mt-2 font-mono text-2xl font-semibold text-black">{orderNumber}</p>
+          </div>
+
+          <div className="mt-8 space-y-3 text-left">
+            <p className="text-sm font-medium text-black/70">
+              <strong className="text-black">Shipping to:</strong>
+            </p>
+            <p className="text-black">
+              {shippingAddress.fullName}
+              <br />
+              {shippingAddress.address}
+              <br />
+              {shippingAddress.city}, {shippingAddress.province} {shippingAddress.zipCode}
+              <br />
+              {shippingAddress.country}
+            </p>
+          </div>
+
+          <div className="mt-8 rounded-lg border border-black/10 bg-black/5 p-6 text-left">
+            <p className="flex justify-between text-black">
+              <span>Subtotal:</span>
+              <span>₱{totalPrice.toFixed(2)}</span>
+            </p>
+            <p className="mt-2 flex justify-between text-black">
+              <span>Shipping:</span>
+              <span>₱{shippingCost.toFixed(2)}</span>
+            </p>
+            <p className="mt-2 flex justify-between text-black">
+              <span>Payment Method:</span>
+              <span className="capitalize">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase()}</span>
+            </p>
+            <p className="mt-4 border-t border-black/10 pt-4 flex justify-between text-lg font-semibold text-black">
+              <span>Total:</span>
+              <span>₱{finalTotal.toFixed(2)}</span>
+            </p>
+          </div>
+
+          {paymentMethod === 'gcash' && (
+            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-left">
+              <p className="text-sm font-semibold text-blue-900">GCash Payment</p>
+              <p className="mt-1 text-sm text-blue-900">Send payment to <strong>09395221808</strong>.</p>
+            </div>
+          )}
+
+          <p className="mt-8 text-sm text-black/70">
+            A confirmation email has been sent to <strong>{shippingAddress.email}</strong>
+          </p>
+
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <NextLink className="inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white" href="/shop">
+              CONTINUE SHOPPING
+            </NextLink>
+            <NextLink className="inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white" href="/profile">
+              VIEW ORDERS
+            </NextLink>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-6xl py-8 md:py-16">
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold text-black">Checkout</h1>
+        <div className="mt-4 flex items-center gap-2 text-sm text-black/70">
+          <button className={`${step === 'shipping' ? 'bg-black text-white' : 'bg-black/10 text-black'} h-8 w-8 rounded-full font-semibold`} type="button">1</button>
+          <span className={step === 'shipping' ? 'font-semibold text-black' : 'text-black/70'}>Shipping</span>
+          <div className="flex-1 border-t border-black/10" />
+          <button className={`${step === 'payment' ? 'bg-black text-white' : 'bg-black/10 text-black'} h-8 w-8 rounded-full font-semibold`} type="button">2</button>
+          <span className={step === 'payment' ? 'font-semibold text-black' : 'text-black/70'}>Payment</span>
+        </div>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          {step === 'shipping' && (
+            <form onSubmit={handleShippingSubmit}>
+              <div className="rounded-2xl border border-black/10 bg-white p-8">
+                <h2 className="text-xl font-semibold text-black">Shipping Address</h2>
+
+                <div className="mt-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-black">Full Name *</label>
+                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.fullName ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })} placeholder="Juan Dela Cruz" type="text" value={shippingAddress.fullName} />
+                    {errors.fullName && <p className="mt-1 text-sm text-red-600">{errors.fullName}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-black">Email *</label>
+                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.email ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })} placeholder="juan@example.com" type="email" value={shippingAddress.email} />
+                    {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-black">Phone Number *</label>
+                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.phone ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })} placeholder="+63 9XX XXX XXXX" type="tel" value={shippingAddress.phone} />
+                    {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-black">Street Address *</label>
+                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.address ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, address: e.target.value })} placeholder="123 Main Street" type="text" value={shippingAddress.address} />
+                    {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black">City *</label>
+                      <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.city ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })} placeholder="Manila" type="text" value={shippingAddress.city} />
+                      {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black">Province *</label>
+                      <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.province ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, province: e.target.value })} placeholder="Metro Manila" type="text" value={shippingAddress.province} />
+                      {errors.province && <p className="mt-1 text-sm text-red-600">{errors.province}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black">Zip Code *</label>
+                      <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.zipCode ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, zipCode: e.target.value })} placeholder="1000" type="text" value={shippingAddress.zipCode} />
+                      {errors.zipCode && <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black">Country</label>
+                      <input className="mt-2 w-full border border-black/10 bg-black/5 px-4 py-2 text-black" disabled type="text" value={shippingAddress.country} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black">Shipping Zone *</label>
+                      <select className="mt-2 w-full border border-black/10 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black" value={shippingZone} onChange={(e) => setShippingZone(e.target.value as ShippingZone)}>
+                        <option value="local">Local</option>
+                        <option value="intra-region">Intra-region</option>
+                        <option value="inter-island">Inter-island</option>
+                      </select>
+                      <p className="mt-1 text-xs text-black/50">Used for the J&T estimate.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black">Packaging *</label>
+                      <select className="mt-2 w-full border border-black/10 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black" value={packagingType} onChange={(e) => setPackagingType(e.target.value as PackagingType)}>
+                        <option value="pouch">Pouch</option>
+                        <option value="box">Box</option>
+                      </select>
+                      <p className="mt-1 text-xs text-black/50">Pouch is usually cheaper for shirts.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <button className="flex-1 border border-black px-6 py-3 text-sm font-medium tracking-[0.1em] text-black transition-colors hover:bg-black hover:text-white sm:tracking-[0.2em]" onClick={handleBackToCart} type="button">BACK TO CART</button>
+                  <button className="flex-1 bg-black px-6 py-3 text-sm font-medium tracking-[0.1em] text-white transition-opacity hover:opacity-90 sm:tracking-[0.2em]" type="submit">CONTINUE TO PAYMENT</button>
+                </div>
+              </div>
+            </form>
+          )}
+
+          {step === 'payment' && (
+            <form onSubmit={handlePaymentSubmit}>
+              <div className="rounded-2xl border border-black/10 bg-white p-8">
+                <h2 className="text-xl font-semibold text-black">Payment Method</h2>
+
+                <div className="mt-6 grid gap-3">
+                  {PAYMENT_METHODS.map((option) => (
+                    <button key={option.value} type="button" onClick={() => setPaymentMethod(option.value)} className={`rounded-xl border px-4 py-3 text-left transition-colors ${paymentMethod === option.value ? 'border-black bg-black text-white' : 'border-black/10 bg-white text-black hover:border-black'}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div>
+                          <p className="font-semibold">{option.label}</p>
+                          <p className={`text-sm ${paymentMethod === option.value ? 'text-white/80' : 'text-black/60'}`}>{option.description}</p>
+                        </div>
+                        {option.value === 'gcash' && paymentMethod === 'gcash' ? <span className="text-sm font-medium">09395221808</span> : null}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMethod === 'gcash' && (
+                  <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <p className="text-sm text-blue-900"><strong>GCash:</strong> Send payment to <strong>09395221808</strong>.</p>
+                  </div>
+                )}
+
+                {paymentMethod === 'cod' && (
+                  <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p className="text-sm text-amber-900"><strong>Cash on Delivery:</strong> Pay the rider when your order arrives.</p>
+                  </div>
+                )}
+
+                {paymentMethod === 'card' && (
+                  <div className="mt-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black">Cardholder Name *</label>
+                      <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.cardName ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setPaymentInfo({ ...paymentInfo, cardName: e.target.value })} placeholder="Juan Dela Cruz" type="text" value={paymentInfo.cardName} />
+                      {errors.cardName && <p className="mt-1 text-sm text-red-600">{errors.cardName}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-black">Card Number *</label>
+                      <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.cardNumber ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => { let value = e.target.value.replace(/\D/g, ''); value = value.replace(/(\d{4})/g, '$1 ').trim(); setPaymentInfo({ ...paymentInfo, cardNumber: value }); }} placeholder="4111 1111 1111 1111" type="text" value={paymentInfo.cardNumber} />
+                      {errors.cardNumber && <p className="mt-1 text-sm text-red-600">{errors.cardNumber}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-black">Expiry Date *</label>
+                        <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.expiryDate ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => { let value = e.target.value.replace(/\D/g, ''); if (value.length >= 2) value = value.substring(0, 2) + '/' + value.substring(2, 4); setPaymentInfo({ ...paymentInfo, expiryDate: value }); }} placeholder="MM/YY" type="text" value={paymentInfo.expiryDate} />
+                        {errors.expiryDate && <p className="mt-1 text-sm text-red-600">{errors.expiryDate}</p>}
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-black">CVV *</label>
+                        <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.cvv ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setPaymentInfo({ ...paymentInfo, cvv: e.target.value.replace(/\D/g, '').substring(0, 4) })} placeholder="123" type="text" value={paymentInfo.cvv} />
+                        {errors.cvv && <p className="mt-1 text-sm text-red-600">{errors.cvv}</p>}
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4">
+                      <p className="text-sm text-yellow-900"><strong>Demo Mode:</strong> Use test card 4111 1111 1111 1111 with any expiry and CVV for testing.</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                  <button className="flex-1 border border-black px-6 py-3 text-sm font-medium tracking-[0.1em] text-black transition-colors hover:bg-black hover:text-white disabled:opacity-50 sm:tracking-[0.2em]" disabled={loading} onClick={() => setStep('shipping')} type="button">BACK</button>
+                  <button className="flex-1 bg-black px-6 py-3 text-sm font-medium tracking-[0.1em] text-white transition-opacity hover:opacity-90 disabled:opacity-50 sm:tracking-[0.2em]" disabled={loading} type="submit">{loading ? 'PROCESSING...' : 'PLACE ORDER'}</button>
+                </div>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <div className="lg:col-span-1">
+          <div className="rounded-2xl border border-black/10 bg-white p-6 lg:sticky lg:top-24">
+            <h2 className="text-lg font-semibold text-black">Order Summary</h2>
+
+            <div className="mt-6 space-y-3 border-t border-black/10 pt-6">
+              {items.map((item) => (
+                <div key={`${item.slug}-${item.size}`} className="text-sm text-black/70">
+                  <div className="flex justify-between">
+                    <span>{item.name}</span>
+                    <span>x{item.quantity}</span>
+                  </div>
+                  <div className="text-xs text-black/50">Size: {item.size}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 space-y-3 border-t border-black/10 pt-6">
+              <div className="flex justify-between text-black">
+                <span>Subtotal</span>
+                <span>₱{totalPrice.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-black">
+                <span>Shipping</span>
+                <span>₱{shippingCost.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-black">
+                <span>Total</span>
+                <span>₱{finalTotal.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-lg border border-black/10 bg-black/5 p-4 text-sm text-black/70">
+              <p className="font-medium text-black">J&T Estimate</p>
+              <p className="mt-1">Billable weight: {shippingEstimate.billableWeight.toFixed(2)} kg</p>
+              <p className="mt-1">Base rate: ₱{shippingEstimate.baseRate.toFixed(2)}</p>
+              <p className="mt-1">Zone: {shippingZone.replace('-', ' ')}</p>
+              <p className="mt-1">Packaging: {packagingType}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
