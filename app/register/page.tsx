@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
-import { useAuth } from '@/context/AuthContext';
+import { formatAuthError, useAuth } from '@/context/AuthContext';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -67,7 +67,7 @@ export default function RegisterPage() {
       // Redirect to profile page
       router.push('/profile');
     } catch (err: any) {
-      setError(err.message || 'An error occurred. Please try again.');
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }
