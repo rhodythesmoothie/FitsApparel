@@ -116,11 +116,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-black">
                 <span>Shipping</span>
-                <span>TBD</span>
-              </div>
-              <div className="flex justify-between text-black">
-                <span>Tax</span>
-                <span>TBD</span>
+                <span>Calculated at checkout</span>
               </div>
 
               <div className="border-t border-black/10 pt-3 flex justify-between text-lg font-semibold text-black">
@@ -129,13 +125,16 @@ export default function CartPage() {
               </div>
             </div>
 
-            <button
-              className="mt-8 w-full bg-black px-6 py-4 text-sm font-medium tracking-[0.1em] text-white transition-opacity hover:opacity-90 sm:tracking-[0.2em]"
-              disabled
-              type="button"
+            <p className="mt-4 text-xs text-black/50">
+              Shipping is estimated with J&T Express at checkout.
+            </p>
+
+            <NextLink
+              className="mt-8 block w-full bg-black px-6 py-4 text-center text-sm font-medium tracking-[0.1em] text-white transition-opacity hover:opacity-90 sm:tracking-[0.2em]"
+              href="/checkout"
             >
               PROCEED TO CHECKOUT
-            </button>
+            </NextLink>
 
             <NextLink
               className="mt-3 block w-full border border-black px-6 py-3 text-center text-sm font-medium tracking-[0.1em] text-black transition-colors hover:bg-black hover:text-white sm:tracking-[0.2em]"
