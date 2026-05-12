@@ -5,10 +5,12 @@ import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
 import { formatAuthError, useAuth } from '@/context/AuthContext';
 
+const DEFAULT_ADMIN_EMAIL = process.env.NEXT_PUBLIC_ADMIN_EMAIL || 'admin@fitsapparel.com';
+
 export default function LoginPage() {
   const router = useRouter();
   const { signin } = useAuth();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,21 +21,19 @@ export default function LoginPage() {
     setLoading(true);
 
     // Basic validation
-    if (!email || !password) {
+    if (!identifier || !password) {
       setError('Please fill in all fields.');
       setLoading(false);
       return;
     }
 
-    if (!email.includes('@')) {
-      setError('Please enter a valid email address.');
-      setLoading(false);
-      return;
-    }
+    const loginEmail = identifier.trim().toLowerCase() === 'admin'
+      ? DEFAULT_ADMIN_EMAIL
+      : identifier.trim();
 
     try {
       // Sign in with Firebase
-      await signin(email, password);
+      await signin(loginEmail, password);
       
       // Redirect to profile page
       router.push('/profile');
@@ -61,16 +61,17 @@ export default function LoginPage() {
         <form className="mt-8 space-y-5" onSubmit={handleLogin}>
           <div>
             <label className="block text-sm font-medium text-black">
-              Email
+              Username or Email
             </label>
             <input
               className="mt-2 w-full border border-black/15 bg-white px-4 py-3 text-black placeholder-black/50 transition-colors focus:border-black focus:outline-none"
-              placeholder="you@example.com"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              placeholder="admin or you@example.com"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               disabled={loading}
             />
+            <p className="mt-1 text-xs text-black/60">Default admin login: username admin, password admin123</p>
           </div>
 
           <div>

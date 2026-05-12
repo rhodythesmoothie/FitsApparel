@@ -3,9 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/config/firebase';
 
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import type { Order } from '@/types';
 
 type ShippingAddress = {
   fullName: string;
@@ -126,6 +129,7 @@ export default function CheckoutPage() {
   const [step, setStep] = useState<'shipping' | 'payment' | 'confirmation'>('shipping');
   const [loading, setLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [shippingZone, setShippingZone] = useState<ShippingZone>('local');
   const [packagingType, setPackagingType] = useState<PackagingType>('pouch');
@@ -254,15 +258,58 @@ export default function CheckoutPage() {
     if (!validatePaymentInfo()) return;
 
     setErrors({});
+    setError(null);
     setLoading(true);
 
-    await new Promise((resolve) => setTimeout(resolve, 1200));
+    try {
+      // Create order object
+      const orderNum = `FIT-${Date.now()}`;
+      const order: Omit<Order, 'orderId'> = {
+        userId: user?.uid || '',
+        userEmail: user?.email || shippingAddress.email,
+        items: items.map(item => ({
+          slug: item.slug,
+          name: item.name,
+          price: Number.parseFloat(String(item.price).replace(/[^0-9.]/g, '')) || 0,
+          size: item.size,
+          quantity: item.quantity,
+          image: item.image,
+        })),
+        shippingAddress: {
+          fullName: shippingAddress.fullName,
+          phone: shippingAddress.phone,
+          street: shippingAddress.address,
+          city: shippingAddress.city,
+          province: shippingAddress.province,
+          postalCode: shippingAddress.zipCode,
+        },
+        paymentMethod,
+        shippingCost,
+        subtotal: totalPrice,
+        total: finalTotal,
+        status: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-    const orderNum = `FIT-${Date.now()}`;
-    setOrderNumber(orderNum);
-    clearCart();
-    setStep('confirmation');
-    setLoading(false);
+      // Save order to Firestore
+      const ordersCollection = collection(db, 'orders');
+      await addDoc(ordersCollection, {
+        ...order,
+        orderId: orderNum,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      setOrderNumber(orderNum);
+      clearCart();
+      setStep('confirmation');
+    } catch (err) {
+      console.error('Error creating order:', err);
+      setError('Failed to create order. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBackToCart = () => {
@@ -270,6 +317,32 @@ export default function CheckoutPage() {
   };
 
   if (step === 'confirmation') {
+    if (error) {
+      return (
+        <div className="mx-auto max-w-4xl py-16 md:py-24">
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+              <svg className="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
+              </svg>
+            </div>
+
+            <h1 className="text-3xl font-semibold text-red-900">Order Failed</h1>
+            <p className="mt-4 text-lg text-red-800">{error}</p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+              <button className="inline-block border border-red-600 px-6 py-3 text-sm font-medium tracking-[0.2em] text-red-600 transition-colors hover:bg-red-600 hover:text-white" onClick={() => { setError(null); setStep('payment'); }}>
+                BACK TO PAYMENT
+              </button>
+              <NextLink className="inline-block border border-black px-6 py-3 text-sm font-medium tracking-[0.2em] text-black transition-colors hover:bg-black hover:text-white" href="/shop">
+                CONTINUE SHOPPING
+              </NextLink>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="mx-auto max-w-4xl py-16 md:py-24">
         <div className="rounded-2xl border border-black/10 bg-white p-8 text-center">
@@ -280,7 +353,11 @@ export default function CheckoutPage() {
           </div>
 
           <h1 className="text-3xl font-semibold text-black">Order Confirmed!</h1>
-          <p className="mt-4 text-lg text-black/70">Thank you for your purchase.</p>
+          <p className="mt-4 text-lg text-black/70">Thank you for your purchase. Your order is pending admin approval.</p>
+
+          <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
+            <p className="text-sm text-blue-900"><strong>Order Status:</strong> Your order is being reviewed by our admin team. You will receive an email notification once it's approved.</p>
+          </div>
 
           <div className="mt-8 rounded-lg border border-black/10 bg-black/5 p-6">
             <p className="text-sm text-black/70">Order Number</p>
@@ -452,6 +529,12 @@ export default function CheckoutPage() {
               <div className="rounded-2xl border border-black/10 bg-white p-8">
                 <h2 className="text-xl font-semibold text-black">Payment Method</h2>
 
+                {error ? (
+                  <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+                    {error}
+                  </div>
+                ) : null}
+
                 <div className="mt-6 grid gap-3">
                   {PAYMENT_METHODS.map((option) => (
                     <button key={option.value} type="button" onClick={() => setPaymentMethod(option.value)} className={`rounded-xl border px-4 py-3 text-left transition-colors ${paymentMethod === option.value ? 'border-black bg-black text-white' : 'border-black/10 bg-white text-black hover:border-black'}`}>
@@ -552,13 +635,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg border border-black/10 bg-black/5 p-4 text-sm text-black/70">
-              <p className="font-medium text-black">J&T Estimate</p>
-              <p className="mt-1">Billable weight: {shippingEstimate.billableWeight.toFixed(2)} kg</p>
-              <p className="mt-1">Base rate: ₱{shippingEstimate.baseRate.toFixed(2)}</p>
-              <p className="mt-1">Zone: {shippingZone.replace('-', ' ')}</p>
-              <p className="mt-1">Packaging: {packagingType}</p>
-            </div>
+
           </div>
         </div>
       </div>
