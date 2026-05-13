@@ -8,6 +8,7 @@ import { db } from '@/config/firebase';
 
 import { useAuth } from '@/context/AuthContext';
 import { useCart } from '@/context/CartContext';
+import { computeShippingFee } from '@/lib/shipping';
 import type { Order } from '@/types';
 
 type ShippingAddress = {
@@ -22,8 +23,6 @@ type ShippingAddress = {
 };
 
 type PaymentMethod = 'gcash' | 'cod' | 'card';
-type ShippingZone = 'local' | 'intra-region' | 'inter-island';
-type PackagingType = 'pouch' | 'box';
 
 type PaymentInfo = {
   cardName: string;
@@ -54,73 +53,6 @@ const PAYMENT_METHODS: Array<{
   },
 ];
 
-const PRODUCT_WEIGHT_KG: Record<string, number> = {
-  'fa-tee-white': 0.25,
-  'fa-pride-tee': 0.25,
-  'fa-tee-black': 0.25,
-  'fa-summer-tee': 0.25,
-  'fa-area51-tee': 0.25,
-};
-
-const SHIPPING_MULTIPLIER: Record<ShippingZone, number> = {
-  local: 1,
-  'intra-region': 1.15,
-  'inter-island': 1.3,
-};
-
-const PACKAGING_WEIGHT_KG: Record<PackagingType, number> = {
-  pouch: 0.05,
-  box: 0.15,
-};
-
-const PACKAGING_FEE: Record<PackagingType, number> = {
-  pouch: 0,
-  box: 20,
-};
-
-const SHIPPING_BASE_RATE_BY_WEIGHT = [
-  { maxKg: 0.5, rate: 90 },
-  { maxKg: 1, rate: 160 },
-  { maxKg: 3, rate: 185 },
-  { maxKg: 4, rate: 275 },
-];
-
-function getProductWeightKg(slug: string) {
-  return PRODUCT_WEIGHT_KG[slug] ?? 0.25;
-}
-
-function getVolumetricWeightKg(packagingType: PackagingType) {
-  const dimensions =
-    packagingType === 'pouch'
-      ? { length: 28, width: 22, height: 3 }
-      : { length: 32, width: 25, height: 8 };
-
-  return (dimensions.length * dimensions.width * dimensions.height) / 6000;
-}
-
-function getJtShippingEstimate(
-  actualWeightKg: number,
-  zone: ShippingZone,
-  packagingType: PackagingType,
-) {
-  const billableWeight = Math.max(
-    actualWeightKg + PACKAGING_WEIGHT_KG[packagingType],
-    getVolumetricWeightKg(packagingType),
-  );
-
-  const baseRate =
-    SHIPPING_BASE_RATE_BY_WEIGHT.find((bucket) => billableWeight <= bucket.maxKg)
-      ?.rate ??
-    Math.round(275 + Math.max(0, billableWeight - 4) * 70);
-
-  const computed =
-    Math.round(
-      (baseRate * SHIPPING_MULTIPLIER[zone] + PACKAGING_FEE[packagingType]) * 100,
-    ) / 100;
-
-  return { billableWeight, baseRate, computed };
-}
-
 export default function CheckoutPage() {
   const { items, getTotalPrice, clearCart } = useCart();
   const { user, role } = useAuth();
@@ -134,8 +66,6 @@ export default function CheckoutPage() {
   const [orderShippingCost, setOrderShippingCost] = useState(0);
   const [orderTotal, setOrderTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
-  const [shippingZone, setShippingZone] = useState<ShippingZone>('local');
-  const [packagingType, setPackagingType] = useState<PackagingType>('pouch');
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: '',
@@ -177,13 +107,20 @@ export default function CheckoutPage() {
   }, [user?.email]);
 
   const totalPrice = getTotalPrice();
-  const actualWeightKg = useMemo(
-    () => items.reduce((total, item) => total + getProductWeightKg(item.slug) * item.quantity, 0),
+  const totalQuantity = useMemo(
+    () => items.reduce((total, item) => total + item.quantity, 0),
     [items],
   );
-  const shippingEstimate = getJtShippingEstimate(actualWeightKg, shippingZone, packagingType);
-  const shippingCost = shippingEstimate.computed;
-  const finalTotal = totalPrice + shippingCost;
+  const shippingQuote = useMemo(
+    () => computeShippingFee(shippingAddress.city, shippingAddress.province, totalQuantity),
+    [shippingAddress.city, shippingAddress.province, totalQuantity],
+  );
+  const hasShippingDestination = Boolean(
+    shippingAddress.city.trim() && shippingAddress.province.trim(),
+  );
+  const shippingCost = shippingQuote.fee;
+  const displayedShippingCost = hasShippingDestination ? shippingCost : 0;
+  const finalTotal = totalPrice + displayedShippingCost;
 
   if (!hydrated) {
     return (
@@ -275,6 +212,10 @@ export default function CheckoutPage() {
     setLoading(true);
 
     try {
+      if (!db) {
+        throw new Error('Firebase is not configured. Add your Firebase values to .env.local before placing orders.');
+      }
+
       // Create order object
       const orderNum = `FIT-${Date.now()}`;
       const order: Omit<Order, 'orderId'> = {
@@ -297,6 +238,8 @@ export default function CheckoutPage() {
           postalCode: shippingAddress.zipCode,
         },
         paymentMethod,
+        packaging: shippingQuote.packaging,
+        shippingZone: shippingQuote.zone,
         shippingCost,
         subtotal: totalPrice,
         total: finalTotal,
@@ -322,7 +265,7 @@ export default function CheckoutPage() {
       setStep('confirmation');
     } catch (err) {
       console.error('Error creating order:', err);
-      setError('Failed to create order. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to create order. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -510,26 +453,6 @@ export default function CheckoutPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-black">Shipping Zone *</label>
-                      <select className="mt-2 w-full border border-black/10 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black" value={shippingZone} onChange={(e) => setShippingZone(e.target.value as ShippingZone)}>
-                        <option value="local">Local</option>
-                        <option value="intra-region">Intra-region</option>
-                        <option value="inter-island">Inter-island</option>
-                      </select>
-                      <p className="mt-1 text-xs text-black/50">Used for the J&T estimate.</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-black">Packaging *</label>
-                      <select className="mt-2 w-full border border-black/10 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black" value={packagingType} onChange={(e) => setPackagingType(e.target.value as PackagingType)}>
-                        <option value="pouch">Pouch</option>
-                        <option value="box">Box</option>
-                      </select>
-                      <p className="mt-1 text-xs text-black/50">Pouch is usually cheaper for shirts.</p>
-                    </div>
-                  </div>
                 </div>
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -642,8 +565,12 @@ export default function CheckoutPage() {
                 <span>₱{totalPrice.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-black">
-                <span>Shipping</span>
-                <span>₱{shippingCost.toFixed(2)}</span>
+                <span>Shipping Fee</span>
+                <span className={hasShippingDestination ? 'text-black' : 'text-sm text-black/55'}>
+                  {hasShippingDestination
+                    ? `₱${shippingCost.toFixed(2)}`
+                    : 'Enter Shipping address'}
+                </span>
               </div>
               <div className="flex justify-between text-black">
                 <span>Total</span>

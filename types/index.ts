@@ -1,4 +1,5 @@
 import { SVGProps } from "react";
+import type { PackagingType, ShippingZone } from "@/lib/shipping";
 
 export type IconSvgProps = SVGProps<SVGSVGElement> & {
   size?: number;
@@ -37,6 +38,8 @@ export interface Order {
     postalCode: string;
   };
   paymentMethod: 'gcash' | 'cod' | 'card';
+  packaging?: PackagingType;
+  shippingZone?: ShippingZone;
   shippingCost: number;
   subtotal: number;
   total: number;

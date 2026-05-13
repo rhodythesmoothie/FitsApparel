@@ -80,7 +80,11 @@ export const Navbar = () => {
         </NextLink>
         <ul className="hidden lg:flex gap-5 justify-start ml-2 md:gap-6 md:ml-4">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/" &&
+                item.href !== "/admin" &&
+                pathname.startsWith(item.href));
             return (
               <NavbarItem key={item.href}>
                 <NextLink

@@ -51,11 +51,17 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | OrderStatus>('pending');
+  const [filter, setFilter] = useState<'all' | OrderStatus>('all');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!db) {
+        setError('Firebase is not configured. Add your Firebase values to .env.local to manage orders.');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
@@ -87,6 +93,11 @@ export default function AdminOrdersPage() {
   }, [filter, orders]);
 
   const handleStatusUpdate = async (docId: string, nextStatus: OrderStatus) => {
+    if (!db) {
+      setError('Firebase is not configured. Add your Firebase values to .env.local to manage orders.');
+      return;
+    }
+
     try {
       setSavingId(docId);
       await updateDoc(doc(db, 'orders', docId), {

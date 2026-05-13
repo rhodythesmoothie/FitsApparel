@@ -11,6 +11,10 @@ export default function AdminSalesPage() {
 
   useEffect(() => {
     const fetchOrders = async () => {
+      if (!db) {
+        return;
+      }
+
       try {
         const snapshot = await getDocs(collection(db, 'orders'));
         setOrders(snapshot.docs.map((doc) => doc.data() as Order));

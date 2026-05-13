@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, type FirestoreError } from 'firebase/firestore';
 
 import { db } from '@/config/firebase';
 import type { Order } from '@/types';
@@ -12,6 +12,8 @@ type ProductDoc = {
   stock?: number;
   hidden?: boolean;
 };
+
+type SummaryCollection = 'orders' | 'products' | 'users';
 
 const tiles = [
   { label: 'Orders', href: '/admin/orders' },
@@ -25,31 +27,73 @@ export default function AdminDashboardPage() {
   const [productCount, setProductCount] = useState(0);
   const [soldOutCount, setSoldOutCount] = useState(0);
   const [customerCount, setCustomerCount] = useState(0);
+  const [readErrors, setReadErrors] = useState<Record<SummaryCollection, string | null>>({
+    orders: null,
+    products: null,
+    users: null,
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ordersSnapshot, productsSnapshot, usersSnapshot] = await Promise.all([
-          getDocs(collection(db, 'orders')),
-          getDocs(collection(db, 'products')),
-          getDocs(collection(db, 'users')),
-        ]);
+    if (!db) {
+      const message = 'Firebase is not configured. Add your Firebase values to .env.local to load live dashboard data.';
+      setReadErrors({ orders: message, products: message, users: message });
+      return;
+    }
 
-        const fetchedOrders = ordersSnapshot.docs.map((orderDoc) => orderDoc.data() as Order);
-        const products = productsSnapshot.docs.map((productDoc) => productDoc.data() as ProductDoc);
+    const setCollectionError = (collectionName: SummaryCollection, error: FirestoreError) => {
+      const message =
+        error.code === 'permission-denied'
+          ? 'Permission denied. Deploy the updated Firestore rules so admin users can read this collection.'
+          : error.message;
 
-        setOrders(fetchedOrders);
-        setProductCount(products.length);
-        setSoldOutCount(
-          products.filter((product) => product.hidden || product.soldOut || (typeof product.stock === 'number' && product.stock <= 0)).length,
-        );
-        setCustomerCount(usersSnapshot.docs.length);
-      } catch (error) {
-        console.error('Failed loading admin summary:', error);
-      }
+      setReadErrors((prev) => ({ ...prev, [collectionName]: message }));
     };
 
-    fetchData();
+    const clearCollectionError = (collectionName: SummaryCollection) => {
+      setReadErrors((prev) => ({ ...prev, [collectionName]: null }));
+    };
+
+    const unsubscribeOrders = onSnapshot(
+      collection(db, 'orders'),
+      (snapshot) => {
+        setOrders(snapshot.docs.map((orderDoc) => orderDoc.data() as Order));
+        clearCollectionError('orders');
+      },
+      (error) => setCollectionError('orders', error),
+    );
+
+    const unsubscribeProducts = onSnapshot(
+      collection(db, 'products'),
+      (snapshot) => {
+        const products = snapshot.docs.map((productDoc) => productDoc.data() as ProductDoc);
+        setProductCount(products.length);
+        setSoldOutCount(
+          products.filter(
+            (product) =>
+              product.hidden ||
+              product.soldOut ||
+              (typeof product.stock === 'number' && product.stock <= 0),
+          ).length,
+        );
+        clearCollectionError('products');
+      },
+      (error) => setCollectionError('products', error),
+    );
+
+    const unsubscribeUsers = onSnapshot(
+      collection(db, 'users'),
+      (snapshot) => {
+        setCustomerCount(snapshot.docs.length);
+        clearCollectionError('users');
+      },
+      (error) => setCollectionError('users', error),
+    );
+
+    return () => {
+      unsubscribeOrders();
+      unsubscribeProducts();
+      unsubscribeUsers();
+    };
   }, []);
 
   const metrics = useMemo(() => {
@@ -66,12 +110,27 @@ export default function AdminDashboardPage() {
     };
   }, [orders]);
 
+  const visibleErrors = Object.entries(readErrors).filter(([, message]) => Boolean(message));
+
   return (
     <section className="mx-auto max-w-6xl py-6 md:py-10">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-black md:text-4xl">Admin Dashboard</h1>
         <p className="mt-2 text-black/70">Manage orders, products, customers, and sales in one place.</p>
       </div>
+
+      {visibleErrors.length > 0 ? (
+        <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
+          <p className="font-semibold">Some live dashboard data could not be loaded.</p>
+          <div className="mt-2 space-y-1">
+            {visibleErrors.map(([collectionName, message]) => (
+              <p key={collectionName}>
+                <span className="font-medium capitalize">{collectionName}:</span> {message}
+              </p>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm">

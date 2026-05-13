@@ -47,11 +47,11 @@ export default function LoginPage() {
       : identifier.trim();
 
     try {
-      await signin(loginEmail, password);
-      const currentUser = auth.currentUser;
+      const userCredential = await signin(loginEmail, password);
+      const currentUser = userCredential.user ?? auth?.currentUser;
       let nextRoute = '/';
 
-      if (currentUser?.uid) {
+      if (currentUser?.uid && db) {
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         const userRole = (userDoc.data()?.role || 'user') as 'admin' | 'user';
         nextRoute = userRole === 'admin' ? '/admin' : '/';
@@ -59,12 +59,7 @@ export default function LoginPage() {
 
       router.push(nextRoute);
     } catch (err: any) {
-      const message = formatAuthError(err);
-      if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('wrong')) {
-        setError('Incorrect username/email or password. Please try again.');
-      } else {
-        setError(message);
-      }
+      setError(formatAuthError(err));
     } finally {
       setLoading(false);
     }

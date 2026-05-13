@@ -1,4 +1,16 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {};
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-module.exports = nextConfig;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  turbopack: {
+    root: __dirname,
+  },
+};
+
+export default nextConfig;

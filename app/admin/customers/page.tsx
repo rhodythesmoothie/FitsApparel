@@ -35,6 +35,10 @@ export default function AdminCustomersPage() {
 
   useEffect(() => {
     const fetchCustomers = async () => {
+      if (!db) {
+        return;
+      }
+
       try {
         const usersQuery = query(collection(db, 'users'), where('role', '==', 'user'));
         const [usersSnapshot, ordersSnapshot] = await Promise.all([

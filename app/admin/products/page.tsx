@@ -57,9 +57,15 @@ export default function AdminProductsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  const productCollection = useMemo(() => collection(db, 'products'), []);
+  const productCollection = useMemo(() => (db ? collection(db, 'products') : null), []);
 
   const fetchProducts = async () => {
+    if (!productCollection) {
+      setLoading(false);
+      setMessage('Firebase is not configured. Add your Firebase values to .env.local to manage products.');
+      return;
+    }
+
     try {
       setLoading(true);
       const snapshot = await getDocs(productCollection);
@@ -110,6 +116,10 @@ export default function AdminProductsPage() {
     }
 
     try {
+      if (!productCollection || !db) {
+        throw new Error('Firebase is not configured. Add your Firebase values to .env.local to manage products.');
+      }
+
       setSaving(true);
       setMessage(null);
 
@@ -136,7 +146,7 @@ export default function AdminProductsPage() {
       await fetchProducts();
     } catch (error) {
       console.error('Failed saving product:', error);
-      setMessage('Failed saving product.');
+      setMessage(error instanceof Error ? error.message : 'Failed saving product.');
     } finally {
       setSaving(false);
     }
@@ -158,17 +168,25 @@ export default function AdminProductsPage() {
 
   const handleDelete = async (id: string) => {
     try {
+      if (!db) {
+        throw new Error('Firebase is not configured. Add your Firebase values to .env.local to manage products.');
+      }
+
       await deleteDoc(doc(db, 'products', id));
       setMessage('Product deleted.');
       await fetchProducts();
     } catch (error) {
       console.error('Failed deleting product:', error);
-      setMessage('Failed deleting product.');
+      setMessage(error instanceof Error ? error.message : 'Failed deleting product.');
     }
   };
 
   const seedFallbackProducts = async () => {
     try {
+      if (!productCollection) {
+        throw new Error('Firebase is not configured. Add your Firebase values to .env.local to manage products.');
+      }
+
       setSaving(true);
       for (const product of fallbackProducts) {
         await addDoc(productCollection, {
@@ -183,7 +201,7 @@ export default function AdminProductsPage() {
       await fetchProducts();
     } catch (error) {
       console.error('Failed seeding fallback products:', error);
-      setMessage('Failed to seed fallback products.');
+      setMessage(error instanceof Error ? error.message : 'Failed to seed fallback products.');
     } finally {
       setSaving(false);
     }

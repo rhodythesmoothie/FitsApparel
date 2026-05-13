@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
 
-import { db } from '@/config/firebase';
+import { db, isFirebaseConfigured } from '@/config/firebase';
 import { products as fallbackProducts, type Product } from '@/config/products';
 
 type ProductDoc = {
@@ -46,6 +46,12 @@ export function useProducts() {
 
   useEffect(() => {
     const fetchProducts = async () => {
+      if (!isFirebaseConfigured || !db) {
+        setProducts(fallbackProducts);
+        setLoading(false);
+        return;
+      }
+
       try {
         const snapshot = await getDocs(collection(db, 'products'));
 

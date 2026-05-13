@@ -1,6 +1,6 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getApps, initializeApp, type FirebaseApp } from 'firebase/app';
+import { getAuth, type Auth } from 'firebase/auth';
+import { getFirestore, type Firestore } from 'firebase/firestore';
 
 const firebaseApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
 const firebaseAuthDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -9,16 +9,14 @@ const firebaseStorageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
 const firebaseMessagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID;
 const firebaseAppId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID;
 
-if (
-  !firebaseApiKey ||
-  !firebaseAuthDomain ||
-  !firebaseProjectId ||
-  !firebaseStorageBucket ||
-  !firebaseMessagingSenderId ||
-  !firebaseAppId
-) {
-  throw new Error('Missing Firebase environment variables. Check client/web/.env.local.');
-}
+export const isFirebaseConfigured = Boolean(
+  firebaseApiKey &&
+    firebaseAuthDomain &&
+    firebaseProjectId &&
+    firebaseStorageBucket &&
+    firebaseMessagingSenderId &&
+    firebaseAppId,
+);
 
 // Firebase configuration - sourced from environment variables
 const firebaseConfig = {
@@ -31,12 +29,14 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+const app: FirebaseApp | null = isFirebaseConfigured
+  ? getApps()[0] ?? initializeApp(firebaseConfig)
+  : null;
 
 // Initialize Firebase Authentication and get a reference to the service
-export const auth = getAuth(app);
+export const auth: Auth | null = app ? getAuth(app) : null;
 
 // Initialize Firestore
-export const db = getFirestore(app);
+export const db: Firestore | null = app ? getFirestore(app) : null;
 
 export default app;

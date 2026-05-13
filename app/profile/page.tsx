@@ -67,7 +67,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchOrders = async () => {
-      if (!user?.uid || role !== 'user') {
+      if (!user?.uid || role !== 'user' || !db) {
         setLoadingOrders(false);
         return;
       }
