@@ -64,7 +64,15 @@ export function useProducts() {
           .filter((product) => product.slug && product.name)
           .filter((product, index, array) => array.findIndex((item) => item.slug === product.slug) === index);
 
-        setProducts(mapped.length > 0 ? mapped : fallbackProducts);
+        // Preserve the original relative order but place available products
+        // before sold-out products (soldOut === true).
+        const orderProducts = (list: Product[]) => {
+          const available = list.filter((p) => !p.soldOut);
+          const sold = list.filter((p) => p.soldOut);
+          return [...available, ...sold];
+        };
+
+        setProducts(orderProducts(mapped.length > 0 ? mapped : fallbackProducts));
       } catch (error) {
         console.error('Failed to load products from Firestore:', error);
         setProducts(fallbackProducts);

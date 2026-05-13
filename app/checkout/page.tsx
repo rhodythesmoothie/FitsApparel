@@ -130,6 +130,9 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [orderSubtotal, setOrderSubtotal] = useState(0);
+  const [orderShippingCost, setOrderShippingCost] = useState(0);
+  const [orderTotal, setOrderTotal] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
   const [shippingZone, setShippingZone] = useState<ShippingZone>('local');
   const [packagingType, setPackagingType] = useState<PackagingType>('pouch');
@@ -312,6 +315,9 @@ export default function CheckoutPage() {
       });
 
       setOrderNumber(orderNum);
+      setOrderSubtotal(totalPrice);
+      setOrderShippingCost(shippingCost);
+      setOrderTotal(finalTotal);
       clearCart();
       setStep('confirmation');
     } catch (err) {
@@ -392,11 +398,11 @@ export default function CheckoutPage() {
           <div className="mt-8 rounded-lg border border-black/10 bg-black/5 p-6 text-left">
             <p className="flex justify-between text-black">
               <span>Subtotal:</span>
-              <span>₱{totalPrice.toFixed(2)}</span>
+              <span>₱{orderSubtotal.toFixed(2)}</span>
             </p>
             <p className="mt-2 flex justify-between text-black">
               <span>Shipping:</span>
-              <span>₱{shippingCost.toFixed(2)}</span>
+              <span>₱{orderShippingCost.toFixed(2)}</span>
             </p>
             <p className="mt-2 flex justify-between text-black">
               <span>Payment Method:</span>
@@ -404,7 +410,7 @@ export default function CheckoutPage() {
             </p>
             <p className="mt-4 border-t border-black/10 pt-4 flex justify-between text-lg font-semibold text-black">
               <span>Total:</span>
-              <span>₱{finalTotal.toFixed(2)}</span>
+              <span>₱{orderTotal.toFixed(2)}</span>
             </p>
           </div>
 
