@@ -1,5 +1,6 @@
 "use client";
 
+import { Badge } from "@heroui/badge";
 import {
   Navbar as HeroUINavbar,
   NavbarContent,
@@ -18,6 +19,7 @@ import {
   CartIcon,
 } from "@/components/icons";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
 const BUYER_NAV_ITEMS = [
   { label: "Home", href: "/" },
@@ -40,8 +42,11 @@ export const Navbar = () => {
   const isHomePage = pathname === "/";
   const isProfileSection = pathname.startsWith("/profile") || pathname.startsWith("/login");
   const { user, role, logout, loading } = useAuth();
+  const { items } = useCart();
   const isAdmin = role === "admin";
   const navItems = isAdmin ? ADMIN_NAV_ITEMS : BUYER_NAV_ITEMS;
+  const cartItemCount = items.reduce((total, item) => total + item.quantity, 0);
+  const cartBadgeContent = cartItemCount > 99 ? "99+" : cartItemCount;
 
   const handleLogout = async () => {
     try {
@@ -149,13 +154,26 @@ export const Navbar = () => {
             </>
           )}
           {!isAdmin && (
-            <NextLink
-              aria-label="Cart"
-              className="rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:p-2.5 md:p-3"
-              href="/cart"
+            <Badge
+              showOutline
+              classNames={{
+                badge:
+                  "h-5 min-w-5 border-2 border-white bg-black px-1 text-[10px] font-semibold text-white",
+              }}
+              content={cartBadgeContent}
+              isInvisible={cartItemCount === 0}
+              placement="top-right"
+              shape="circle"
+              size="sm"
             >
-              <CartIcon className="text-lg md:text-xl" />
-            </NextLink>
+              <NextLink
+                aria-label={`Cart with ${cartItemCount} item${cartItemCount === 1 ? "" : "s"}`}
+                className="rounded-full p-2 text-black transition-colors hover:bg-default-100 sm:p-2.5 md:p-3"
+                href="/cart"
+              >
+                <CartIcon className="text-lg md:text-xl" />
+              </NextLink>
+            </Badge>
           )}
           <NavbarMenuToggle className="lg:hidden" />
         </NavbarItem>

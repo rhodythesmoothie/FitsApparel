@@ -1,0 +1,150 @@
+[debug] [2026-05-14T18:58:03.023Z] ----------------------------------------------------------------------
+[debug] [2026-05-14T18:58:03.026Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Damian\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only storage --project fits-apparel
+[debug] [2026-05-14T18:58:03.026Z] CLI Version:   15.16.0
+[debug] [2026-05-14T18:58:03.026Z] Platform:      win32
+[debug] [2026-05-14T18:58:03.026Z] Node Version:  v24.13.1
+[debug] [2026-05-14T18:58:03.026Z] Time:          Fri May 15 2026 02:58:03 GMT+0800 (Philippine Standard Time)
+[debug] [2026-05-14T18:58:03.026Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-14T18:58:03.030Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-05-14T18:58:06.283Z] Object "/hosting" in "firebase.json" has unknown property: {"additionalProperty":"trailingSlashBehavior"}
+[debug] [2026-05-14T18:58:06.284Z] Field "/hosting" in "firebase.json" is possibly invalid: must be array
+[debug] [2026-05-14T18:58:06.284Z] Field "/hosting" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2026-05-14T18:58:06.290Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-14T18:58:06.291Z] > authorizing via signed-in user (rhodelbadiango@gmail.com)
+[debug] [2026-05-14T18:58:06.291Z] [iam] checking project fits-apparel for permissions ["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2026-05-14T18:58:06.293Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:06.293Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:06.294Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions [none]
+[debug] [2026-05-14T18:58:06.294Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions  x-goog-user-project=fits-apparel
+[debug] [2026-05-14T18:58:06.295Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2026-05-14T18:58:06.840Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-05-14T18:58:06.841Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-05-14T18:58:07.359Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions 200
+[debug] [2026-05-14T18:58:07.359Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[info] 
+[info] === Deploying to 'fits-apparel'...
+[info] 
+[info] i  deploying storage 
+[info] i  storage: ensuring required API firebasestorage.googleapis.com is enabled... 
+[debug] [2026-05-14T18:58:07.364Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:07.365Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:07.365Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/fits-apparel/services/firebasestorage.googleapis.com [none]
+[debug] [2026-05-14T18:58:07.365Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/fits-apparel/services/firebasestorage.googleapis.com  x-goog-user-project=fits-apparel
+[debug] [2026-05-14T18:58:08.769Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/fits-apparel/services/firebasestorage.googleapis.com 200
+[debug] [2026-05-14T18:58:08.769Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/fits-apparel/services/firebasestorage.googleapis.com [omitted]
+[info] +  storage: required API firebasestorage.googleapis.com is enabled 
+[debug] [2026-05-14T18:58:08.774Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:08.775Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:08.775Z] >>> [apiv2][query] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket [none]
+[debug] [2026-05-14T18:58:09.410Z] <<< [apiv2][status] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket 200
+[debug] [2026-05-14T18:58:09.410Z] <<< [apiv2][body] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket {"name":"projects/fits-apparel/defaultBucket","location":"ASIA","bucket":{"name":"projects/fits-apparel/buckets/fits-apparel.firebasestorage.app"},"storageClass":"MULTI_REGIONAL"}
+[info] i  firebase.storage: checking storage.rules for compilation errors... 
+[debug] [2026-05-14T18:58:09.413Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:09.413Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:09.413Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test [none]
+[debug] [2026-05-14T18:58:09.414Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test [omitted]
+[debug] [2026-05-14T18:58:10.819Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test 200
+[debug] [2026-05-14T18:58:10.819Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test {}
+[info] +  firebase.storage: rules file storage.rules compiled successfully 
+[debug] [2026-05-14T18:58:10.821Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:10.822Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:10.822Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases pageSize=10&pageToken=
+[debug] [2026-05-14T18:58:12.159Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases 200
+[debug] [2026-05-14T18:58:12.159Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases {"releases":[{"name":"projects/fits-apparel/releases/cloud.firestore","rulesetName":"projects/fits-apparel/rulesets/5413b84d-da91-40b8-8cc7-3387395cb9e3","createTime":"2026-05-12T01:37:17.649835Z","updateTime":"2026-05-13T18:52:45.403779Z"},{"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/d51e24f6-c39a-4189-8e7e-cf462d1a5ff4","createTime":"2026-05-14T18:57:04.091271Z","updateTime":"2026-05-14T18:57:04.091271Z"}]}
+[debug] [2026-05-14T18:58:12.170Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:12.170Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:12.170Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/d51e24f6-c39a-4189-8e7e-cf462d1a5ff4 [none]
+[debug] [2026-05-14T18:58:13.515Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/d51e24f6-c39a-4189-8e7e-cf462d1a5ff4 200
+[debug] [2026-05-14T18:58:13.516Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/d51e24f6-c39a-4189-8e7e-cf462d1a5ff4 [omitted]
+[info] i  storage: uploading rules storage.rules... 
+[debug] [2026-05-14T18:58:13.518Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:13.518Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:13.518Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets [none]
+[debug] [2026-05-14T18:58:13.519Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets [omitted]
+[debug] [2026-05-14T18:58:14.834Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets 200
+[debug] [2026-05-14T18:58:14.834Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets {"name":"projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc","source":{"files":[{"content":"rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    function signedIn() {\n      return request.auth != null;\n    }\n\n    function hasAdminRole() {\n      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&\n        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';\n    }\n\n    function isAdmin() {\n      return signedIn() && (\n        request.auth.token.admin == true ||\n        hasAdminRole()\n      );\n    }\n\n    match /products/{fileName} {\n      allow read: if true;\n      allow write: if isAdmin() &&\n        request.resource.size < 10 * 1024 * 1024 &&\n        request.resource.contentType.matches('image/.*');\n    }\n  }\n}\n","name":"storage.rules"}]},"createTime":"2026-05-14T18:58:14.511903Z","metadata":{"services":["firebase.storage"]}}
+[debug] [2026-05-14T18:58:14.834Z] [rules] created ruleset projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc
+[debug] [2026-05-14T18:58:14.835Z] [rules] releasing firebase.storage/fits-apparel.firebasestorage.app with ruleset projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc
+[debug] [2026-05-14T18:58:14.836Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:14.837Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T18:58:14.837Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app [none]
+[debug] [2026-05-14T18:58:14.837Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app {"release":{"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc"}}
+[debug] [2026-05-14T18:58:16.196Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app 200
+[debug] [2026-05-14T18:58:16.196Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app {"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc","createTime":"2026-05-14T18:57:04.091271Z","updateTime":"2026-05-14T18:58:15.873544Z"}
+[debug] [2026-05-14T18:58:16.196Z] [rules] updated release projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app
+[info] +  storage: released rules storage.rules to firebase.storage 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/fits-apparel/overview
+[debug] [2026-05-14T19:02:52.235Z] ----------------------------------------------------------------------
+[debug] [2026-05-14T19:02:52.238Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Damian\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only storage --project fits-apparel
+[debug] [2026-05-14T19:02:52.238Z] CLI Version:   15.16.0
+[debug] [2026-05-14T19:02:52.238Z] Platform:      win32
+[debug] [2026-05-14T19:02:52.238Z] Node Version:  v24.13.1
+[debug] [2026-05-14T19:02:52.238Z] Time:          Fri May 15 2026 03:02:52 GMT+0800 (Philippine Standard Time)
+[debug] [2026-05-14T19:02:52.239Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-14T19:02:53.587Z] Object "/hosting" in "firebase.json" has unknown property: {"additionalProperty":"trailingSlashBehavior"}
+[debug] [2026-05-14T19:02:53.588Z] Field "/hosting" in "firebase.json" is possibly invalid: must be array
+[debug] [2026-05-14T19:02:53.588Z] Field "/hosting" in "firebase.json" is possibly invalid: must match a schema in anyOf
+[debug] [2026-05-14T19:02:53.592Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-14T19:02:53.592Z] > authorizing via signed-in user (rhodelbadiango@gmail.com)
+[debug] [2026-05-14T19:02:53.592Z] [iam] checking project fits-apparel for permissions ["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]
+[debug] [2026-05-14T19:02:53.594Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:53.594Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:53.595Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions [none]
+[debug] [2026-05-14T19:02:53.595Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions  x-goog-user-project=fits-apparel
+[debug] [2026-05-14T19:02:53.595Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[debug] [2026-05-14T19:02:54.530Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions 200
+[debug] [2026-05-14T19:02:54.531Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/fits-apparel:testIamPermissions {"permissions":["firebase.projects.get","firebaserules.releases.create","firebaserules.releases.update","firebaserules.rulesets.create"]}
+[info] 
+[info] === Deploying to 'fits-apparel'...
+[info] 
+[info] i  deploying storage 
+[info] i  storage: ensuring required API firebasestorage.googleapis.com is enabled... 
+[debug] [2026-05-14T19:02:54.534Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:54.534Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:54.534Z] >>> [apiv2][query] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket [none]
+[debug] [2026-05-14T19:02:55.081Z] <<< [apiv2][status] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket 200
+[debug] [2026-05-14T19:02:55.081Z] <<< [apiv2][body] GET https://firebasestorage.googleapis.com/v1alpha/projects/fits-apparel/defaultBucket {"name":"projects/fits-apparel/defaultBucket","location":"ASIA","bucket":{"name":"projects/fits-apparel/buckets/fits-apparel.firebasestorage.app"},"storageClass":"MULTI_REGIONAL"}
+[info] i  firebase.storage: checking storage.rules for compilation errors... 
+[debug] [2026-05-14T19:02:55.083Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:55.083Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:55.083Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test [none]
+[debug] [2026-05-14T19:02:55.083Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test [omitted]
+[debug] [2026-05-14T19:02:56.451Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test 200
+[debug] [2026-05-14T19:02:56.451Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel:test {}
+[info] +  firebase.storage: rules file storage.rules compiled successfully 
+[debug] [2026-05-14T19:02:56.452Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:56.452Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:56.452Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases pageSize=10&pageToken=
+[debug] [2026-05-14T19:02:57.747Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases 200
+[debug] [2026-05-14T19:02:57.747Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases {"releases":[{"name":"projects/fits-apparel/releases/cloud.firestore","rulesetName":"projects/fits-apparel/rulesets/5413b84d-da91-40b8-8cc7-3387395cb9e3","createTime":"2026-05-12T01:37:17.649835Z","updateTime":"2026-05-13T18:52:45.403779Z"},{"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc","createTime":"2026-05-14T18:57:04.091271Z","updateTime":"2026-05-14T18:58:15.873544Z"}]}
+[debug] [2026-05-14T19:02:57.758Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:57.758Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:57.758Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc [none]
+[debug] [2026-05-14T19:02:59.039Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc 200
+[debug] [2026-05-14T19:02:59.039Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets/71d12a21-37f2-4bdc-961f-39f08dab29dc [omitted]
+[info] i  storage: uploading rules storage.rules... 
+[debug] [2026-05-14T19:02:59.040Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:59.040Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:59.041Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets [none]
+[debug] [2026-05-14T19:02:59.041Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets [omitted]
+[debug] [2026-05-14T19:02:59.392Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets 200
+[debug] [2026-05-14T19:02:59.392Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/fits-apparel/rulesets {"name":"projects/fits-apparel/rulesets/c3b7c211-d1ca-4274-837d-8a9bd6791fdf","source":{"files":[{"content":"rules_version = '2';\nservice firebase.storage {\n  match /b/{bucket}/o {\n    function signedIn() {\n      return request.auth != null;\n    }\n\n    function hasAdminRole() {\n      return firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&\n        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';\n    }\n\n    function isDefaultAdminEmail() {\n      return request.auth.token.email == 'admin@fitsapparel.com';\n    }\n\n    function isAdmin() {\n      return signedIn() && (\n        request.auth.token.admin == true ||\n        hasAdminRole() ||\n        isDefaultAdminEmail()\n      );\n    }\n\n    match /products/{fileName} {\n      allow read: if true;\n      allow write: if isAdmin() &&\n        request.resource.size < 10 * 1024 * 1024 &&\n        request.resource.contentType.matches('image/.*');\n    }\n  }\n}\n","name":"storage.rules"}]},"createTime":"2026-05-14T19:02:59.068175Z","metadata":{"services":["firebase.storage"]}}
+[debug] [2026-05-14T19:02:59.392Z] [rules] created ruleset projects/fits-apparel/rulesets/c3b7c211-d1ca-4274-837d-8a9bd6791fdf
+[debug] [2026-05-14T19:02:59.392Z] [rules] releasing firebase.storage/fits-apparel.firebasestorage.app with ruleset projects/fits-apparel/rulesets/c3b7c211-d1ca-4274-837d-8a9bd6791fdf
+[debug] [2026-05-14T19:02:59.393Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:59.393Z] Checked if tokens are valid: true, expires at: 1778786692132
+[debug] [2026-05-14T19:02:59.393Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app [none]
+[debug] [2026-05-14T19:02:59.393Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app {"release":{"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/c3b7c211-d1ca-4274-837d-8a9bd6791fdf"}}
+[debug] [2026-05-14T19:03:00.726Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app 200
+[debug] [2026-05-14T19:03:00.726Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app {"name":"projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app","rulesetName":"projects/fits-apparel/rulesets/c3b7c211-d1ca-4274-837d-8a9bd6791fdf","createTime":"2026-05-14T18:57:04.091271Z","updateTime":"2026-05-14T19:03:00.404884Z"}
+[debug] [2026-05-14T19:03:00.726Z] [rules] updated release projects/fits-apparel/releases/firebase.storage/fits-apparel.firebasestorage.app
+[info] +  storage: released rules storage.rules to firebase.storage 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/fits-apparel/overview

@@ -3,6 +3,7 @@
 import { useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import NextLink from 'next/link';
+import { addToast } from '@heroui/toast';
 
 import { sizeOptions } from "@/config/products";
 import { useCart } from '@/context/CartContext';
@@ -24,6 +25,14 @@ export default function ProductPage({
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [quantity, setQuantity] = useState<number>(1);
   const [addedToCart, setAddedToCart] = useState(false);
+
+  const showSizeRequiredToast = () => {
+    addToast({
+      title: 'Select a size',
+      description: 'Choose your preferred size before continuing.',
+      color: 'warning',
+    });
+  };
 
   if (loading) {
     return (
@@ -53,7 +62,7 @@ export default function ProductPage({
     }
 
     if (!selectedSize) {
-      alert('Please select a size');
+      showSizeRequiredToast();
       return;
     }
 
@@ -76,7 +85,7 @@ export default function ProductPage({
     }
 
     if (!selectedSize) {
-      alert('Please select a size');
+      showSizeRequiredToast();
       return;
     }
 

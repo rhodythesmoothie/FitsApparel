@@ -2,6 +2,9 @@
   "firestore": {
     "rules": "firestore.rules"
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": "client/web/.next/standalone/public",
     "ignore": [

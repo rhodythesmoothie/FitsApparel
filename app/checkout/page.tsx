@@ -1,5 +1,13 @@
 'use client';
 
+import { Button } from '@heroui/button';
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+} from '@heroui/modal';
 import { useEffect, useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -65,7 +73,8 @@ export default function CheckoutPage() {
   const [orderSubtotal, setOrderSubtotal] = useState(0);
   const [orderShippingCost, setOrderShippingCost] = useState(0);
   const [orderTotal, setOrderTotal] = useState(0);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('gcash');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | null>(null);
+  const [isGcashQrOpen, setIsGcashQrOpen] = useState(false);
 
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: '',
@@ -158,6 +167,7 @@ export default function CheckoutPage() {
     if (!shippingAddress.email.trim()) newErrors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shippingAddress.email)) newErrors.email = 'Invalid email format';
     if (!shippingAddress.phone.trim()) newErrors.phone = 'Phone number is required';
+    else if (!/^\d{11}$/.test(shippingAddress.phone)) newErrors.phone = 'Phone number must be exactly 11 digits';
     if (!shippingAddress.address.trim()) newErrors.address = 'Address is required';
     if (!shippingAddress.city.trim()) newErrors.city = 'City is required';
     if (!shippingAddress.province.trim()) newErrors.province = 'Province is required';
@@ -170,7 +180,9 @@ export default function CheckoutPage() {
   const validatePaymentInfo = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (paymentMethod === 'card') {
+    if (!paymentMethod) {
+      newErrors.paymentMethod = 'Please select a payment method';
+    } else if (paymentMethod === 'card') {
       if (!paymentInfo.cardName.trim()) {
         newErrors.cardName = 'Cardholder name is required';
       }
@@ -203,9 +215,25 @@ export default function CheckoutPage() {
     }
   };
 
+  const handlePaymentMethodSelect = (method: PaymentMethod) => {
+    setPaymentMethod(method);
+
+    if (method === 'gcash') {
+      setIsGcashQrOpen(true);
+    }
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setShippingAddress({
+      ...shippingAddress,
+      phone: value.replace(/\D/g, '').slice(0, 11),
+    });
+  };
+
   const handlePaymentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validatePaymentInfo()) return;
+    if (!paymentMethod) return;
 
     setErrors({});
     setError(null);
@@ -349,7 +377,7 @@ export default function CheckoutPage() {
             </p>
             <p className="mt-2 flex justify-between text-black">
               <span>Payment Method:</span>
-              <span className="capitalize">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod.toUpperCase()}</span>
+              <span className="capitalize">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod ? paymentMethod.toUpperCase() : ''}</span>
             </p>
             <p className="mt-4 border-t border-black/10 pt-4 flex justify-between text-lg font-semibold text-black">
               <span>Total:</span>
@@ -382,6 +410,7 @@ export default function CheckoutPage() {
   }
 
   return (
+    <>
     <div className="mx-auto max-w-6xl py-8 md:py-16">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-black">Checkout</h1>
@@ -416,7 +445,7 @@ export default function CheckoutPage() {
 
                   <div>
                     <label className="block text-sm font-medium text-black">Phone Number *</label>
-                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.phone ? 'border-red-500' : 'border-black/10'}`} onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })} placeholder="+63 9XX XXX XXXX" type="tel" value={shippingAddress.phone} />
+                    <input className={`mt-2 w-full border px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black ${errors.phone ? 'border-red-500' : 'border-black/10'}`} inputMode="numeric" maxLength={11} onChange={(e) => handlePhoneChange(e.target.value)} pattern="[0-9]{11}" placeholder="09123456789" type="tel" value={shippingAddress.phone} />
                     {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
                   </div>
 
@@ -476,7 +505,7 @@ export default function CheckoutPage() {
 
                 <div className="mt-6 grid gap-3">
                   {PAYMENT_METHODS.map((option) => (
-                    <button key={option.value} type="button" onClick={() => setPaymentMethod(option.value)} className={`rounded-xl border px-4 py-3 text-left transition-colors ${paymentMethod === option.value ? 'border-black bg-black text-white' : 'border-black/10 bg-white text-black hover:border-black'}`}>
+                    <button key={option.value} type="button" onClick={() => handlePaymentMethodSelect(option.value)} className={`rounded-xl border px-4 py-3 text-left transition-colors ${paymentMethod === option.value ? 'border-black bg-black text-white' : 'border-black/10 bg-white text-black hover:border-black'}`}>
                       <div className="flex items-center justify-between gap-4">
                         <div>
                           <p className="font-semibold">{option.label}</p>
@@ -487,6 +516,7 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
+                {errors.paymentMethod && <p className="mt-2 text-sm text-red-600">{errors.paymentMethod}</p>}
 
                 {paymentMethod === 'gcash' && (
                   <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
@@ -583,5 +613,44 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+    <Modal
+      isOpen={isGcashQrOpen}
+      placement="center"
+      radius="sm"
+      size="md"
+      onOpenChange={setIsGcashQrOpen}
+    >
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1 text-black">
+              GCash QR Code
+              <span className="text-sm font-normal text-black/60">
+                Send payment to 09395221808
+              </span>
+            </ModalHeader>
+            <ModalBody>
+              <div className="flex justify-center rounded-xl border border-black/10 bg-white p-3">
+                <img
+                  alt="GCash payment QR code"
+                  className="max-h-[70vh] w-full max-w-sm object-contain"
+                  src="/marcogcash.jpg"
+                />
+              </div>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                className="bg-black px-5 font-semibold text-white"
+                radius="sm"
+                onPress={onClose}
+              >
+                Done
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+    </>
   );
 }

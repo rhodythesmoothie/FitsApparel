@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { Button } from '@heroui/button';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   addDoc,
   collection,
@@ -10,8 +11,13 @@ import {
   serverTimestamp,
   updateDoc,
 } from 'firebase/firestore';
+import {
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes,
+} from 'firebase/storage';
 
-import { db } from '@/config/firebase';
+import { db, storage } from '@/config/firebase';
 import { products as fallbackProducts } from '@/config/products';
 
 type AdminProduct = {
@@ -55,7 +61,9 @@ export default function AdminProductsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const productCollection = useMemo(() => (db ? collection(db, 'products') : null), []);
 
@@ -102,6 +110,51 @@ export default function AdminProductsPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
+  const handleImageUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setMessage('Please choose an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    if (!storage) {
+      setMessage('Firebase Storage is not configured. Add your storage bucket to .env.local to upload photos.');
+      event.target.value = '';
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setMessage(null);
+
+      const fileExtension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      const productName = form.name.trim() || file.name.replace(/\.[^.]+$/, '');
+      const safeName = buildSlug(productName) || 'product-photo';
+      const imageRef = storageRef(
+        storage,
+        `products/${safeName}-${Date.now()}.${fileExtension}`,
+      );
+
+      await uploadBytes(imageRef, file, { contentType: file.type });
+      const downloadUrl = await getDownloadURL(imageRef);
+
+      handleInput('image', downloadUrl);
+      setMessage('Photo uploaded.');
+    } catch (error) {
+      console.error('Failed uploading photo:', error);
+      setMessage(error instanceof Error ? error.message : 'Failed uploading photo.');
+    } finally {
+      setUploadingImage(false);
+      event.target.value = '';
+    }
+  };
+
   const handleSave = async (event: FormEvent) => {
     event.preventDefault();
 
@@ -111,7 +164,7 @@ export default function AdminProductsPage() {
     }
 
     if (!form.image.trim()) {
-      setMessage('Product image URL/path is required.');
+      setMessage('Product photo is required.');
       return;
     }
 
@@ -253,12 +306,53 @@ export default function AdminProductsPage() {
               value={form.price}
               onChange={(event) => handleInput('price', event.target.value)}
             />
-            <input
-              className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
-              placeholder="Image URL or /public path"
-              value={form.image}
-              onChange={(event) => handleInput('image', event.target.value)}
-            />
+            <div className="rounded-xl border border-black/10 bg-black/[0.02] p-3">
+              <input
+                ref={fileInputRef}
+                accept="image/*"
+                className="hidden"
+                type="file"
+                onChange={handleImageUpload}
+              />
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  className="bg-black px-4 font-semibold text-white"
+                  isDisabled={saving || uploadingImage}
+                  isLoading={uploadingImage}
+                  radius="sm"
+                  size="sm"
+                  type="button"
+                  onPress={() => fileInputRef.current?.click()}
+                >
+                  {form.image ? 'Change Photo' : 'Upload Photo'}
+                </Button>
+                <span className="text-sm text-black/60">
+                  {form.image ? 'Photo ready for this product.' : 'Upload a product photo.'}
+                </span>
+              </div>
+              {form.image && (
+                <div className="mt-3 flex items-center gap-3 rounded-lg bg-white p-2">
+                  <img
+                    alt="Product preview"
+                    className="h-20 w-20 rounded-md border border-black/10 object-cover"
+                    src={form.image}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col justify-center">
+                    <p className="text-sm font-medium text-black">Product photo selected</p>
+                    <Button
+                      className="mt-2 border-black/20 text-black"
+                      radius="sm"
+                      size="sm"
+                      type="button"
+                      variant="bordered"
+                      onPress={() => handleInput('image', '')}
+                    >
+                      Remove Photo
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
             <textarea
               className="w-full rounded-lg border border-black/15 px-3 py-2 text-sm"
               placeholder="Description"
@@ -296,7 +390,7 @@ export default function AdminProductsPage() {
             <button
               className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
               type="submit"
-              disabled={saving}
+              disabled={saving || uploadingImage}
             >
               {editingId ? 'Update' : 'Add'} Product
             </button>
